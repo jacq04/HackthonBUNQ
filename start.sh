@@ -64,6 +64,17 @@ for arg in "$@"; do
 done
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Corporate CA passthrough — NODE_EXTRA_CA_CERTS is honored by Claude Code /
+# Node tooling; mirror it into REQUESTS_CA_BUNDLE + SSL_CERT_FILE so Python's
+# requests / ssl modules see it too. The httpx-based code uses app.utils.tls
+# which loads certifi + this file into a combined context at runtime.
+# ─────────────────────────────────────────────────────────────────────────────
+if [[ -n "${NODE_EXTRA_CA_CERTS:-}" && -f "$NODE_EXTRA_CA_CERTS" ]]; then
+  export SSL_CERT_FILE="${SSL_CERT_FILE:-$NODE_EXTRA_CA_CERTS}"
+  export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-$NODE_EXTRA_CA_CERTS}"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Preflight — verify prerequisites
 # ─────────────────────────────────────────────────────────────────────────────
 section "preflight"

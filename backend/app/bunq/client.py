@@ -26,6 +26,7 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 
 from app.config import settings
 from app.utils.logging import get_logger
+from app.utils.tls import make_ssl_context
 
 log = get_logger(__name__)
 
@@ -64,7 +65,9 @@ class BunqClient:
         self._session_token: str | None = None
         self._user_id: int | None = None
 
-        self._http = httpx.AsyncClient(base_url=settings.bunq_base_url, timeout=15.0)
+        self._http = httpx.AsyncClient(
+            base_url=settings.bunq_base_url, timeout=15.0, verify=make_ssl_context()
+        )
         self._session_lock = asyncio.Lock()
 
     @property
