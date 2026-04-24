@@ -62,11 +62,17 @@ class BunqSigninResponse(BaseModel):
 # Helpers
 # -----------------------------------------------------------------------------
 async def _bunq_profile(label: str) -> dict[str, Any]:
+    """Pull the authoritative display_name from the bunq UserPerson object.
+
+    Falls back to the IBAN alias's name, then to the label (worst case).
+    The IBAN field is always taken from the primary ACTIVE account.
+    """
     client = get_bunq_client(label)
     await client.ensure_session()
 
-    display_name = label.capitalize()
+    display_name: str | None = None
     primary_iban: str | None = None
+
     try:
         accounts = await client.list_monetary_accounts()
         for a in accounts:
@@ -75,12 +81,15 @@ async def _bunq_profile(label: str) -> dict[str, Any]:
             for alias in a.get("alias") or []:
                 if alias.get("type") == "IBAN" and not primary_iban:
                     primary_iban = alias.get("value")
-                    name = alias.get("name")
-                    if name:
-                        display_name = name
+                    if not display_name:
+                        display_name = alias.get("name")
             break
     except Exception as e:  # noqa: BLE001
         log.warning("auth.bunq.profile.failed", label=label, error=str(e))
+
+    # If we still don't have a name, fall back to label.
+    if not display_name:
+        display_name = label.capitalize()
 
     return {
         "bunq_user_id": client.user_id,

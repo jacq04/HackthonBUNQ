@@ -51,6 +51,7 @@ export default function RootLayout() {
         <Stack.Screen name="group/[id]/contribute" options={{ title: "Contribute" }} />
         <Stack.Screen name="group/[id]/emergency" options={{ title: "Emergency" }} />
         <Stack.Screen name="group/[id]/dispute/[disputeId]" options={{ title: "Dispute" }} />
+        <Stack.Screen name="group/[id]/add-member" options={{ title: "Add Member" }} />
         <Stack.Screen name="group/create" options={{ title: "New Group" }} />
         <Stack.Screen name="group/join" options={{ title: "Join Group" }} />
       </Stack>

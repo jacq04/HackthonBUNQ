@@ -1,4 +1,4 @@
-import { Link, useLocalSearchParams } from "expo-router";
+import { Link, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +25,13 @@ export default function GroupDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Refresh on return from the add-member screen.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
   const filled_cents = events
     .filter((e) => e.type === "contribution.posted")
@@ -61,6 +68,46 @@ export default function GroupDetail() {
         </View>
 
         <View className="px-6 mt-6">
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-dusk/70 uppercase tracking-wide text-xs">
+              members ({members.length}/{group?.cycle_count ?? "?"})
+            </Text>
+            <Link href={{ pathname: "/group/[id]/add-member", params: { id } }} asChild>
+              <TouchableOpacity>
+                <Text className="text-coral text-xs font-semibold">+ add</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
+          <View className="bg-soft rounded-3xl py-2">
+            {members.length === 0 ? (
+              <Text className="text-dusk/50 italic text-center py-3">no members yet</Text>
+            ) : (
+              members.map((m: any) => (
+                <View
+                  key={m.user_id}
+                  className="flex-row items-center px-4 py-2.5 border-b border-cream/60 last:border-b-0"
+                >
+                  <View className="w-8 h-8 rounded-full bg-bowl items-center justify-center mr-3">
+                    <Text className="text-cream font-semibold text-xs">
+                      {(m.users?.display_name ?? "?").charAt(0)}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-dusk font-medium">
+                      {m.users?.display_name ?? "unnamed"}
+                      {m.role === "admin" ? "  ★" : ""}
+                    </Text>
+                    <Text className="text-dusk/50 text-xs">
+                      cycle {m.payout_cycle ?? "—"} · {m.status}
+                    </Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </View>
+        </View>
+
+        <View className="px-6 mt-6">
           <Text className="text-dusk/70 uppercase tracking-wide text-xs mb-2">ledger tape</Text>
           <View className="bg-soft rounded-3xl overflow-hidden" style={{ minHeight: 180 }}>
             <LedgerTape events={events} />
@@ -90,8 +137,13 @@ export default function GroupDetail() {
               <Text className="text-cream">emergency exit</Text>
             </TouchableOpacity>
           </Link>
-          <TouchableOpacity onPress={onInvite} className="bg-bowl rounded-2xl px-4 py-3">
-            <Text className="text-cream">invite member</Text>
+          <Link href={{ pathname: "/group/[id]/add-member", params: { id } }} asChild>
+            <TouchableOpacity className="bg-bowl rounded-2xl px-4 py-3">
+              <Text className="text-cream">add from bunq</Text>
+            </TouchableOpacity>
+          </Link>
+          <TouchableOpacity onPress={onInvite} className="bg-soft rounded-2xl px-4 py-3">
+            <Text className="text-dusk">invite link</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
