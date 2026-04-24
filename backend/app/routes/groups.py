@@ -47,6 +47,14 @@ class CreateGroupResponse(BaseModel):
 
 @router.post("", response_model=CreateGroupResponse)
 async def create_group(body: CreateGroupBody, user_id: CurrentUserId) -> CreateGroupResponse:
+    # Circles are formed by the Matchmaker agent (or the platform), not by users
+    # directly. Keep the handler so backend code and tests can still call it,
+    # but reject user-origin traffic. Bypassed in development for easier demos.
+    if settings.is_production:
+        raise HTTPException(
+            status_code=403,
+            detail="Circles are formed by the Matchmaker — use POST /matchmaker/find-circle",
+        )
     group_id = uuid.uuid4()
 
     # 1. TigerBeetle — create pool + gateway + penalty accounts.

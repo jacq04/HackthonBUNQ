@@ -18,6 +18,7 @@ from app.routes import (
     emergency,
     groups,
     health,
+    matchmaker,
     members,
     payout,
     webhooks,
@@ -62,6 +63,7 @@ app.include_router(health.router)
 app.include_router(auth_bunq.router)
 app.include_router(groups.router)
 app.include_router(members.router)
+app.include_router(matchmaker.router)
 app.include_router(charter.router)
 app.include_router(chat.router)
 app.include_router(contribute.router)

@@ -45,6 +45,7 @@ export default function RootLayout() {
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#F5EEDC" } }}>
         <Stack.Screen name="onboarding/sign-in" />
+        <Stack.Screen name="onboarding/find-circle" options={{ title: "Find a circle" }} />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="group/[id]/index" options={{ title: "Group" }} />
         <Stack.Screen name="group/[id]/charter" options={{ title: "Charter" }} />

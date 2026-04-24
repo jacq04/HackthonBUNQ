@@ -60,14 +60,14 @@ export default function Home() {
       />
 
       <View className="absolute bottom-8 left-6 right-6 flex-row gap-3">
-        <Link href="/group/create" asChild>
+        <Link href="/onboarding/find-circle" asChild>
           <TouchableOpacity className="bg-coral rounded-2xl py-4 flex-1 items-center">
-            <Text className="text-cream font-semibold">new circle</Text>
+            <Text className="text-cream font-semibold">find a circle</Text>
           </TouchableOpacity>
         </Link>
         <Link href="/group/join" asChild>
           <TouchableOpacity className="bg-bowl rounded-2xl py-4 flex-1 items-center">
-            <Text className="text-cream font-semibold">join circle</Text>
+            <Text className="text-cream font-semibold">join by code</Text>
           </TouchableOpacity>
         </Link>
       </View>

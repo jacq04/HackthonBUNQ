@@ -3,6 +3,24 @@
 A 90-second pitch on the iOS Simulator + one terminal window. Driven by
 `backend/scripts/demo.py`. Every beat is idempotent and reproducible.
 
+## The agent cast
+
+Circles are **platform-formed**, never user-created. The user describes what
+they want; agents do the rest.
+
+| Agent | When | What it does |
+|---|---|---|
+| **Vetting** | on first match request | Reads bunq tx history → trust_score 0–100 with rationale |
+| **Matchmaker** | on match request | Decides JOIN / FORM / WAITLIST; forms new circles via service-role |
+| **Constitution** | after a new circle is formed | Drafts the charter (rules) with the founder |
+| **Collector** | contribution window | Tone-calibrated reminders; escalates to Mediator |
+| **Mediator** | on dispute | Reads TB + bunq + evidence → verdict (+ corrective TB transfer) |
+| **Emergency** | on exit request | Computes fair buyout → group consent → atomic TB unwind |
+| **Payout Optimizer** | cycle boundary | Interviews members → OR-tools CSP → orders payouts |
+| **Post-Payout Coach** | on payout land | Routes pot into the goal sub-account |
+| **Auditor** | end of cycle | Issues signed reputation_events → passport |
+| **Cultural Translator** | cross-culture groups | Rewrites agent messages in native idiom (future) |
+
 ## 0. Pre-flight (5 min before stage)
 
 ```bash
@@ -34,9 +52,11 @@ Keep these side-by-side on your laptop:
 > Numbered beats map 1:1 to terminal commands.
 
 ### 0:00 — Hook (10 s, narrated)
-> "60% of informal savings groups fail. Not because people are dishonest — because the math and the social coordination break. Meet Kitty."
+> "60% of informal savings groups fail. Not because people are dishonest — because the math and the social coordination break. And on existing fintech you have to *find* six people you trust to even start. Meet Kitty — circles form themselves."
 
 Open the app (already signed in as Asha). Lagos Crew at the top of Home.
+Optional: tap **find a circle** first to show the Matchmaker flow, then back out
+to Lagos Crew for the rest of the beats.
 
 ### 0:10 — Live contribution (15 s)
 Tap the group → you're on the Pot screen with pot filled at ~50% + the ledger tape scrolling past 3 cycles of posts.
@@ -123,7 +143,28 @@ BEAT 4    make demo-beat CMD=payout
 RESET     make reset-demo
 ```
 
-## 5. What to emphasize to judges
+## 5. Matchmaker demo (alternate / extended pitch)
+
+If you want to show circle-formation instead of (or before) Lagos Crew:
+
+```bash
+make reset-demo                              # wipe Lagos Crew
+# Seed just waitlisted users (no groups), then invoke matchmaker.
+# Currently done manually; a `demo waitlist` helper can be added.
+```
+
+On the app, from sign-in:
+1. Sign in with bunq → pick Asha
+2. Home is empty → tap **find a circle**
+3. Fill: "tuition deposit", €250, 6 cycles, high urgency, "Tanda"
+4. Tap **ask the matchmaker** →
+   - Vetting runs (~5s) → score shown in the reply
+   - Matchmaker chooses: with empty state, WAITLIST
+5. Sign out. Sign in as Malik, Priya, … with similar prefs.
+6. On the 6th user, Matchmaker switches to **FORM** → circle is created with
+   all 6 as members. Constitution picks up from there.
+
+## 6. What to emphasize to judges
 
 - **TigerBeetle invariant** — `debits_must_not_exceed_credits` on the pool means it's impossible to pay out more than was contributed. Say that line.
 - **Agents propose, humans approve** — every money-touching action has a tool-call audit trail in `public.audit_log`. Show a few rows if asked.

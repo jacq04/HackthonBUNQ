@@ -124,4 +124,39 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ text }),
     }),
+
+  // Matchmaker — the only user-facing way to enter a circle.
+  findCircle: (body: {
+    contribution_amount_cents: number;
+    cycle_count: number;
+    goal: string;
+    urgency?: "low" | "medium" | "high";
+    cultural_hint?: string | null;
+  }) =>
+    req<{
+      action: "joined" | "formed" | "waitlisted" | "none";
+      group_id: string | null;
+      group_name: string | null;
+      payout_cycle: number | null;
+      trust_score: number;
+      rationale: string;
+    }>(`/matchmaker/find-circle`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  // Members — admin-only in-app add from cached bunq identities.
+  listMemberCandidates: (groupId: string) =>
+    req<BunqUserCard[]>(`/groups/${groupId}/members/candidates`),
+  addBunqMember: (groupId: string, label: string) =>
+    req<{
+      user_id: string;
+      display_name: string;
+      bunq_label: string;
+      primary_iban: string | null;
+      payout_cycle: number | null;
+    }>(`/groups/${groupId}/members/add-bunq`, {
+      method: "POST",
+      body: JSON.stringify({ label }),
+    }),
 };
