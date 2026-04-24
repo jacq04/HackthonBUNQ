@@ -17,20 +17,27 @@
     },
     "android": {
       "package": "com.kitty.hackathon",
-      "permissions": ["CAMERA", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+      "permissions": [
+        "CAMERA",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-camera",
       "expo-barcode-scanner",
       "expo-local-authentication",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": { "origin": false }
+      "router": {
+        "origin": false
+      }
     }
   }
 }

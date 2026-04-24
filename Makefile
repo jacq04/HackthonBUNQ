@@ -52,6 +52,12 @@ backend:
 mobile:
 	cd mobile && npx expo start
 
+mobile-up:
+	./scripts/mobile-up.sh
+
+mobile-tunnel:
+	./scripts/mobile-up.sh --tunnel
+
 dev:
 	docker compose up
 
