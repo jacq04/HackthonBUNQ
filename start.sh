@@ -73,19 +73,30 @@ need() {
 }
 
 need docker  "install Docker Desktop (https://www.docker.com/products/docker-desktop)"
-need python3 "install Python 3.12+ (https://www.python.org/downloads/)"
 need node    "install Node 20+ (https://nodejs.org)"
 need npm     "comes with Node"
 
 docker info >/dev/null 2>&1 || die "Docker daemon is not running — start Docker Desktop and retry"
 ok "docker running"
 
-python_ver=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-if [[ "$python_ver" < "3.12" ]]; then
-  warn "python3 is $python_ver — 3.12+ recommended"
-else
-  ok "python $python_ver"
+# Find the newest Python >=3.12 on PATH. pyproject.toml requires 3.12+.
+# Order: explicit $PYTHON env override → python3.13 → python3.12 → python3.
+PYTHON_BIN=""
+for candidate in "${PYTHON:-}" python3.13 python3.12 python3; do
+  [[ -z "$candidate" ]] && continue
+  if command -v "$candidate" >/dev/null 2>&1; then
+    ver=$("$candidate" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || true)
+    if [[ "$ver" == "3.12" || "$ver" == "3.13" || "$ver" == "3.14" ]]; then
+      PYTHON_BIN="$(command -v "$candidate")"
+      ok "python $ver ($PYTHON_BIN)"
+      break
+    fi
+  fi
+done
+if [[ -z "$PYTHON_BIN" ]]; then
+  die "no Python 3.12+ found — install via 'brew install python@3.12' or set PYTHON=/path/to/python3.12"
 fi
+export PYTHON_BIN
 
 node_ver=$(node -v | sed 's/v//' | cut -d. -f1)
 if (( node_ver < 18 )); then
@@ -133,8 +144,8 @@ fi
 if [[ -z "${SKIP_DEPS:-}" ]]; then
   section "installing dependencies"
   if [[ ! -d "$REPO_ROOT/backend/.venv" ]]; then
-    log "creating backend/.venv"
-    python3 -m venv "$REPO_ROOT/backend/.venv"
+    log "creating backend/.venv with $PYTHON_BIN"
+    "$PYTHON_BIN" -m venv "$REPO_ROOT/backend/.venv"
   fi
   log "installing backend deps (pip)"
   # shellcheck disable=SC1091

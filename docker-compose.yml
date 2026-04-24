@@ -2,6 +2,17 @@ services:
   tigerbeetle:
     image: ghcr.io/tigerbeetle/tigerbeetle:0.16.30
     container_name: kitty-tigerbeetle
+    # Docker Desktop's default seccomp profile blocks io_uring syscalls on
+    # recent Linux kernels. TigerBeetle requires io_uring, so we opt out.
+    security_opt:
+      - seccomp=unconfined
+    # Lock memory (TB mmap's the data file; ulimit prevents swap churn).
+    cap_add:
+      - IPC_LOCK
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
       - ./tb-data:/data
     entrypoint: ["/bin/sh", "-c"]
