@@ -1,5 +1,10 @@
 .PHONY: help install dev up up-mobile check down backend mobile tb tb-stop db-migrate db-reset seed-demo reset-demo test lint bunq-bootstrap bunq-funds bunq-list supabase-up supabase-down supabase-status supabase-reset supabase-studio
 
+# Python interpreter — prefer the backend venv so Makefile targets don't get
+# the system's miniforge 3.9 (PEP 604 `dict | None` syntax requires 3.10+).
+VENV_PY := $(CURDIR)/backend/.venv/bin/python
+PY      := $(shell [ -x "$(VENV_PY)" ] && echo "$(VENV_PY)" || echo "python3")
+
 help:
 	@echo "Kitty — bunq Hackathon 7.0"
 	@echo ""
@@ -42,7 +47,7 @@ tb-stop:
 	docker compose down
 
 backend:
-	cd backend && uvicorn app.main:app --reload --port $${BACKEND_PORT:-8000}
+	cd backend && $(PY) -m uvicorn app.main:app --reload --port $${BACKEND_PORT:-8000}
 
 mobile:
 	cd mobile && npx expo start
@@ -71,21 +76,21 @@ db-reset:
 	psql "$$SUPABASE_DB_URL" -f supabase/migrations/9999_reset.sql
 
 seed-demo:
-	cd backend && python -m scripts.seed_demo
+	cd backend && $(PY) -m scripts.seed_demo
 
 reset-demo:
-	cd backend && python -m scripts.reset_demo
+	cd backend && $(PY) -m scripts.reset_demo
 
 bunq-bootstrap:
 	@# Authenticate (or mint) every label in SANDBOX_USERS.md using the toolkit.
-	cd backend && python -m scripts.bunq_bootstrap create-from-md
+	cd backend && $(PY) -m scripts.bunq_bootstrap create-from-md
 
 bunq-funds:
 	@test -n "$(LABEL)" || (echo "usage: make bunq-funds LABEL=asha [AMOUNT=500]"; exit 1)
-	cd backend && python -m scripts.bunq_bootstrap test-funds --label $(LABEL) --amount $${AMOUNT:-500}
+	cd backend && $(PY) -m scripts.bunq_bootstrap test-funds --label $(LABEL) --amount $${AMOUNT:-500}
 
 bunq-list:
-	cd backend && python -m scripts.bunq_bootstrap list
+	cd backend && $(PY) -m scripts.bunq_bootstrap list
 
 # ─ Supabase (local stack via CLI, run via npx so no global install needed) ─
 supabase-up:
@@ -106,7 +111,7 @@ supabase-studio:
 	@open http://127.0.0.1:54323 2>/dev/null || true
 
 test:
-	cd backend && pytest -x -q
+	cd backend && $(PY) -m pytest -x -q
 
 lint:
-	cd backend && ruff check . && ruff format --check .
+	cd backend && $(PY) -m ruff check . && $(PY) -m ruff format --check .

@@ -41,6 +41,10 @@ bunq_context.json
 .kitty/
 third_party/bunq_toolkit/bunq_context.json
 
+# Sandbox user credentials — populated locally from SANDBOX_USERS.template.md.
+# Even sandbox keys shouldn't land in a public repo.
+SANDBOX_USERS.md
+
 # start.sh runtime dir (pids, logs)
 .kitty-run/
 

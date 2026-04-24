@@ -1,14 +1,14 @@
-# bunq Sandbox Users
+# bunq Sandbox Users — template
 
-Paste your sandbox user credentials here. The backend reads this file in two modes:
+**This file is a template.** At runtime the bootstrap script copies it to `SANDBOX_USERS.md` (which is git-ignored) before filling in keys and IBANs. Never commit the filled version — the repo is public and even sandbox keys don't belong in public git history.
 
-- **Declarative**: list the users you already created (API keys from `/sandbox-user-person`).
-- **Bootstrap**: leave the API-key column blank and run `python -m scripts.bunq_bootstrap create` — the script
-  mints a new sandbox user for each blank row and fills in the details.
+Flow:
 
-Each authenticated user's session is cached at `~/.kitty/bunq-contexts/<label>.json` in the same
-format as the bunq hackathon toolkit's `bunq_context.json` (so `python third_party/bunq_toolkit/01_authentication.py`
-works interchangeably with our FastAPI backend).
+1. Copy this file to `SANDBOX_USERS.md` (the bootstrap does this automatically if the file is missing).
+2. Edit the `label` / `email` / `notes` columns as you like.
+3. Run `make bunq-bootstrap` — blank `api_key` rows get minted as new sandbox users and filled in.
+
+Each authenticated user's session is cached at `~/.kitty/bunq-contexts/<label>.json` in the same format as the bunq hackathon toolkit's `bunq_context.json` (so `python third_party/bunq_toolkit/01_authentication.py` works interchangeably with our FastAPI backend).
 
 ## Users
 
@@ -23,13 +23,13 @@ works interchangeably with our FastAPI backend).
 
 ## Sandbox test funds
 
-Each new sandbox user starts with €0. The toolkit recommends requesting €500 from `sugardaddy@bunq.com`:
+Each new sandbox user starts with €0. Request €500 from `sugardaddy@bunq.com`:
 
 ```bash
-python -m scripts.bunq_request_test_funds --label asha --amount 500
+make bunq-funds LABEL=asha AMOUNT=500
 ```
 
-## Notes for demo day
+## Notes
 
-- API keys here are **sandbox only** — they won't work against production. Safe to commit to a private repo; avoid committing to a public one.
+- API keys in your local `SANDBOX_USERS.md` are **sandbox only** — they won't work against production. Still, don't leak them — git-ignored for that reason.
 - If you rotate a key, run `python -m scripts.bunq_bootstrap rotate --label <name>` to re-authenticate and refresh the cached session.

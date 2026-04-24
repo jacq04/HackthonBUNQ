@@ -51,6 +51,17 @@ from app.bunq.client import context_path_for  # noqa: E402
 from app.config import settings  # noqa: E402
 
 SANDBOX_USERS_MD = REPO_ROOT / "SANDBOX_USERS.md"
+SANDBOX_USERS_TEMPLATE = REPO_ROOT / "SANDBOX_USERS.template.md"
+
+
+def _ensure_users_file() -> None:
+    """Copy the template into the git-ignored SANDBOX_USERS.md on first run."""
+    if SANDBOX_USERS_MD.exists():
+        return
+    if not SANDBOX_USERS_TEMPLATE.exists():
+        return
+    SANDBOX_USERS_MD.write_text(SANDBOX_USERS_TEMPLATE.read_text())
+    print(f"[bootstrap] initialized {SANDBOX_USERS_MD.name} from template")
 
 
 # -----------------------------------------------------------------------------
@@ -86,6 +97,7 @@ _HEADER_RE = re.compile(r"^\|\s*label\s*\|", re.I)
 
 
 def parse_md_table() -> list[dict[str, str]]:
+    _ensure_users_file()
     if not SANDBOX_USERS_MD.exists():
         return []
     lines = SANDBOX_USERS_MD.read_text().splitlines()
