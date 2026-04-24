@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.bunq import get_bunq_client
 from app.config import settings
 from app.routes import (
+    auth_bunq,
     charter,
     chat,
     contribute,
@@ -57,6 +58,7 @@ app.add_middleware(
 
 # Routers — registered lazily so a missing dep in one route doesn't sink the app.
 app.include_router(health.router)
+app.include_router(auth_bunq.router)
 app.include_router(groups.router)
 app.include_router(charter.router)
 app.include_router(chat.router)

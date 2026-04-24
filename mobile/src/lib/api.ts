@@ -26,8 +26,24 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await resp.json()) as T;
 }
 
+export type BunqUserCard = {
+  label: string;
+  display_name: string;
+  bunq_user_id: number | null;
+  primary_iban: string | null;
+  culture_hint: string | null;
+};
+
 export const api = {
   health: () => req<{ status: string }>("/health"),
+
+  // "Sign in with bunq"
+  listBunqUsers: () => req<BunqUserCard[]>("/auth/bunq/users"),
+  signinWithBunq: (label: string) =>
+    req<{ email: string; otp: string; expires_in: number }>("/auth/bunq", {
+      method: "POST",
+      body: JSON.stringify({ label }),
+    }),
 
   // Groups
   createGroup: (body: {
