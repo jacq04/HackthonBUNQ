@@ -62,3 +62,5 @@ Thumbs.db
 # Supabase
 supabase/.branches/
 supabase/.temp/
+# supabase CLI local config (keep migrations + config.toml, ignore generated)
+supabase/.env

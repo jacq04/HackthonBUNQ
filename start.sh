@@ -126,6 +126,15 @@ log "inspecting .env:"
 check_env_var SUPABASE_URL
 check_env_var SUPABASE_SERVICE_ROLE_KEY
 check_env_var ANTHROPIC_API_KEY
+
+# Warn if a local Supabase URL is configured but the stack isn't running.
+if grep -q "^SUPABASE_URL=http://127\.0\.0\.1:54321" "$REPO_ROOT/.env" 2>/dev/null; then
+  if nc -z 127.0.0.1 54321 2>/dev/null; then
+    ok "  local supabase stack listening on :54321"
+  else
+    warn "  SUPABASE_URL points at localhost but the stack isn't up — run ${C_BOLD}make supabase-up${C_RESET}"
+  fi
+fi
 # bunq is optional now — multi-user contexts live outside .env
 if grep -q "^BUNQ_API_KEY=.\+" "$REPO_ROOT/.env" 2>/dev/null; then
   ok "  BUNQ_API_KEY set (optional)"

@@ -1,4 +1,4 @@
-.PHONY: help install dev up up-mobile check down backend mobile tb tb-stop db-migrate db-reset seed-demo reset-demo test lint bunq-bootstrap bunq-funds bunq-list
+.PHONY: help install dev up up-mobile check down backend mobile tb tb-stop db-migrate db-reset seed-demo reset-demo test lint bunq-bootstrap bunq-funds bunq-list supabase-up supabase-down supabase-status supabase-reset supabase-studio
 
 help:
 	@echo "Kitty — bunq Hackathon 7.0"
@@ -11,7 +11,10 @@ help:
 	@echo ""
 	@echo "Setup:"
 	@echo "  make install        Install backend + mobile dependencies"
-	@echo "  make db-migrate     Apply Supabase migrations"
+	@echo "  make supabase-up    Boot local Supabase (Postgres + Auth + Realtime + Studio)"
+	@echo "  make supabase-reset Wipe & re-apply migrations"
+	@echo "  make supabase-studio Open Studio in browser (http://127.0.0.1:54323)"
+	@echo "  make db-migrate     Apply Supabase migrations (against a hosted DB)"
 	@echo ""
 	@echo "Run:"
 	@echo "  make tb             Start TigerBeetle (docker-compose)"
@@ -83,6 +86,24 @@ bunq-funds:
 
 bunq-list:
 	cd backend && python -m scripts.bunq_bootstrap list
+
+# ─ Supabase (local stack via CLI, run via npx so no global install needed) ─
+supabase-up:
+	npx -y supabase@latest start
+
+supabase-down:
+	npx -y supabase@latest stop
+
+supabase-status:
+	npx -y supabase@latest status
+
+supabase-reset:
+	@# Wipes the DB and re-applies every migration from supabase/migrations/
+	npx -y supabase@latest db reset
+
+supabase-studio:
+	@echo "Studio: http://127.0.0.1:54323"
+	@open http://127.0.0.1:54323 2>/dev/null || true
 
 test:
 	cd backend && pytest -x -q

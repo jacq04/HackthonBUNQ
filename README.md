@@ -20,9 +20,13 @@ N friends contribute monthly; one member gets the pot each cycle on rotation. Ag
 ### Fast path (one command)
 
 ```bash
-cp .env.example .env   # fill SUPABASE_* + ANTHROPIC_API_KEY
-./start.sh --mobile    # preflight → TB → migrations → backend → expo QR
+cp .env.example .env       # fill in ANTHROPIC_API_KEY (SUPABASE_* auto-filled in next step)
+make supabase-up           # boot local Supabase (Docker) — applies migrations
+# (copy keys printed to .env: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL)
+./start.sh --mobile        # preflight → TB → backend → expo QR
 ```
+
+Studio (local DB GUI): http://127.0.0.1:54323 or `make supabase-studio`.
 
 `./start.sh --check` runs just the preflight. `./stop.sh` tears everything down.
 
