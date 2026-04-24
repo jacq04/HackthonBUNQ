@@ -1,20 +1,14 @@
-import { BarCodeScanner } from "expo-barcode-scanner";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "@/lib/api";
 
 export default function Join() {
   const router = useRouter();
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
-
-  useEffect(() => {
-    BarCodeScanner.requestPermissionsAsync().then(({ status }) =>
-      setHasPermission(status === "granted"),
-    );
-  }, []);
 
   const onScan = async ({ data }: { data: string }) => {
     if (scanned) return;
@@ -34,21 +28,24 @@ export default function Join() {
     }
   };
 
-  if (hasPermission === null) {
+  if (!permission) {
     return (
       <SafeAreaView className="flex-1 bg-cream items-center justify-center">
-        <Text className="text-dusk/60">requesting camera access…</Text>
+        <Text className="text-dusk/60">checking camera permission…</Text>
       </SafeAreaView>
     );
   }
-  if (!hasPermission) {
+  if (!permission.granted) {
     return (
       <SafeAreaView className="flex-1 bg-cream items-center justify-center p-10">
         <Text className="text-dusk mb-6 text-center">
           Camera access is needed to scan invite QR codes.
         </Text>
-        <TouchableOpacity onPress={() => router.back()} className="bg-coral rounded-2xl px-6 py-3">
-          <Text className="text-cream">back</Text>
+        <TouchableOpacity onPress={requestPermission} className="bg-coral rounded-2xl px-6 py-3 mb-3">
+          <Text className="text-cream">grant camera access</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} className="px-6 py-3">
+          <Text className="text-dusk/60">back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -56,9 +53,10 @@ export default function Join() {
 
   return (
     <SafeAreaView className="flex-1 bg-dusk">
-      <BarCodeScanner
-        onBarCodeScanned={scanned ? undefined : onScan}
+      <CameraView
         style={{ flex: 1 }}
+        barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+        onBarcodeScanned={scanned ? undefined : onScan}
       />
       <View className="py-6 items-center bg-dusk">
         <Text className="text-cream/80">scan a Kitty invite QR</Text>

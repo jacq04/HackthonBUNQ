@@ -58,6 +58,12 @@ mobile-up:
 mobile-tunnel:
 	./scripts/mobile-up.sh --tunnel
 
+mobile-ios:
+	./scripts/mobile-up.sh --ios
+
+mobile-web:
+	./scripts/mobile-up.sh --web
+
 dev:
 	docker compose up
 

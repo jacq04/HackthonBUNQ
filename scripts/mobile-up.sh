@@ -7,8 +7,10 @@
 # instead of 127.0.0.1.
 #
 # Usage:
-#   ./scripts/mobile-up.sh          # LAN mode (default)
-#   ./scripts/mobile-up.sh --tunnel # ngrok-style tunnel via Expo (slower, for mobile networks)
+#   ./scripts/mobile-up.sh          # LAN mode (default) — phone via Expo Go
+#   ./scripts/mobile-up.sh --tunnel # ngrok-style tunnel (blocked on some corp nets)
+#   ./scripts/mobile-up.sh --ios    # iOS Simulator — zero network required
+#   ./scripts/mobile-up.sh --web    # browser, localhost only (no native modules)
 #   HOST_IP=10.0.0.5 ./scripts/mobile-up.sh   # force a specific IP
 set -euo pipefail
 
@@ -23,9 +25,19 @@ for arg in "$@"; do
   case "$arg" in
     --tunnel) MODE="tunnel" ;;
     --lan)    MODE="lan" ;;
+    --ios)    MODE="ios" ;;
+    --web)    MODE="web" ;;
     *) echo "unknown flag: $arg"; exit 1 ;;
   esac
 done
+
+# ─── Host selection ──────────────────────────────────────────────────────────
+# Simulator / browser run on this machine — use localhost, no network needed.
+# Phone modes need a routable host.
+if [[ "$MODE" == "ios" || "$MODE" == "web" ]]; then
+  HOST_IP="127.0.0.1"
+  echo "${CYA}[kitty]${RST} ${BLD}$MODE${RST} mode — using localhost"
+else
 
 # ─── Detect LAN IP ───────────────────────────────────────────────────────────
 detect_ip() {
@@ -48,6 +60,7 @@ if [[ -z "$HOST_IP" ]]; then
   exit 1
 fi
 echo "${CYA}[kitty]${RST} LAN IP: ${BLD}$HOST_IP${RST}"
+fi  # close the host-selection branch
 
 # ─── Read supabase anon key from root .env ───────────────────────────────────
 if [[ ! -f .env ]]; then
@@ -89,9 +102,27 @@ echo "  · open Expo Go on your phone (iOS / Android)"
 echo "  · scan the QR code printed below"
 echo "  · phone must be on the same WiFi as this machine"
 cd "$REPO_ROOT/mobile"
-if [[ "$MODE" == "tunnel" ]]; then
-  echo "  · (tunnel mode: works across networks, slower)"
-  exec npx -y expo start --tunnel --clear
-else
-  exec npx -y expo start --lan --clear
-fi
+case "$MODE" in
+  tunnel)
+    echo "  · (tunnel mode: works across networks, slower)"
+    exec npx -y expo start --tunnel --clear
+    ;;
+  ios)
+    # Boot the simulator first so the openurl step doesn't race.
+    if ! xcrun simctl list devices booted | grep -q iPhone; then
+      echo "${CYA}[kitty]${RST} booting iPhone 16 Pro simulator..."
+      xcrun simctl boot "iPhone 16 Pro" 2>/dev/null || true
+    fi
+    open -a Simulator
+    echo "  · hand off to iOS Simulator (Expo Go auto-installs if missing)"
+    exec npx -y expo start --localhost --ios --clear
+    ;;
+  web)
+    echo "  · web mode: runs in browser at http://localhost:8081 (native modules stubbed)"
+    exec npx -y expo start --localhost --web --clear
+    ;;
+  lan)
+    echo "  · scan QR with Expo Go on a phone on the same WiFi"
+    exec npx -y expo start --lan --clear
+    ;;
+esac

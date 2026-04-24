@@ -26,7 +26,6 @@
     "plugins": [
       "expo-router",
       "expo-camera",
-      "expo-barcode-scanner",
       "expo-local-authentication",
       "expo-notifications",
       "expo-asset"
