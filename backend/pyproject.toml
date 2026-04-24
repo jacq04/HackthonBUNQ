@@ -12,7 +12,9 @@ dependencies = [
     "httpx>=0.27",
     "anthropic>=0.40",
     "supabase>=2.10",
-    "tigerbeetle>=0.16",
+    # Pin to match the TB server image in docker-compose.yml (client and server
+    # versions must be compatible; client evicts itself if it's too new).
+    "tigerbeetle==0.16.30",
     "ortools>=9.11",
     "python-multipart>=0.0.17",
     "python-dateutil>=2.9",

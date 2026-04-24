@@ -88,10 +88,21 @@ db-reset:
 	psql "$$SUPABASE_DB_URL" -f supabase/migrations/9999_reset.sql
 
 seed-demo:
-	cd backend && $(PY) -m scripts.seed_demo
+	cd backend && $(PY) -m scripts.demo seed
 
 reset-demo:
-	cd backend && $(PY) -m scripts.reset_demo
+	cd backend && $(PY) -m scripts.demo reset
+
+demo-status:
+	cd backend && $(PY) -m scripts.demo status
+
+# make demo-beat CMD=contribute LABEL=tunde
+# make demo-beat CMD=dispute LABEL=malik
+# make demo-beat CMD=emergency LABEL=priya
+# make demo-beat CMD=payout
+demo-beat:
+	@test -n "$(CMD)" || (echo "usage: make demo-beat CMD=<contribute|dispute|emergency|payout> [LABEL=<name>]"; exit 1)
+	cd backend && $(PY) -m scripts.demo $(CMD) $(LABEL)
 
 bunq-bootstrap:
 	@# Authenticate (or mint) every label in SANDBOX_USERS.md using the toolkit.

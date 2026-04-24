@@ -71,7 +71,10 @@ def get_tb_client() -> Any:
     """Lazy singleton TB client. Import inside so module loads without the dep."""
     import tigerbeetle as tb  # type: ignore[import-not-found]
 
-    addresses = [a.strip() for a in settings.tigerbeetle_addresses.split(",") if a.strip()]
+    # tigerbeetle-python expects a comma-separated string, not a list.
+    addresses = ",".join(
+        a.strip() for a in settings.tigerbeetle_addresses.split(",") if a.strip()
+    )
     return tb.ClientSync(
         cluster_id=settings.tigerbeetle_cluster_id,
         replica_addresses=addresses,

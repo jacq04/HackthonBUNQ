@@ -24,6 +24,11 @@ from app.ledger.tb_client import (
 )
 from app.utils.ids import new_tb_id
 
+# Sentinel: on a POST_PENDING_TRANSFER, amount=AMOUNT_MAX means "post the full
+# pending amount." amount=0 means "post zero, void the rest" (surprising default
+# — cost us an hour). amount ∈ (0, pending.amount) is a partial post.
+AMOUNT_MAX = (1 << 128) - 1
+
 
 @dataclass(frozen=True)
 class TransferLeg:
@@ -82,7 +87,7 @@ def post_pending(pending_id: int, *, group_id: uuid.UUID, cycle_month: int = 0) 
         id=t_id,
         debit_account_id=0,  # inherited from pending
         credit_account_id=0,
-        amount=0,
+        amount=AMOUNT_MAX,  # = post the full pending amount (NOT 0 — that voids!)
         pending_id=pending_id,
         user_data_128=int.from_bytes(group_id.bytes, "big"),
         user_data_64=cycle_month,
