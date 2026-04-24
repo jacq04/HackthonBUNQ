@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Node / Expo
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+.env.local
+.env*.local
+
+# Env & secrets
+.env
+!.env.example
+secrets/
+
+# TigerBeetle data files
+*.tigerbeetle
+tb-data/
+
+# bunq toolkit-compatible session cache
+bunq_context.json
+.kitty/
+third_party/bunq_toolkit/bunq_context.json
+
+# start.sh runtime dir (pids, logs)
+.kitty-run/
+
+# Build artifacts
+*.apk
+*.aab
+*.ipa
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Supabase
+supabase/.branches/
+supabase/.temp/

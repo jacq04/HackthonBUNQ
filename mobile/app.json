@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Kitty",
+    "slug": "kitty",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "kitty",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.kitty.hackathon",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Kitty uses the camera so you can scan invite QR codes and upload payment receipts for disputes.",
+        "NSFaceIDUsageDescription": "Kitty uses Face ID to confirm payments, buyouts, and pot withdrawals."
+      }
+    },
+    "android": {
+      "package": "com.kitty.hackathon",
+      "permissions": ["CAMERA", "USE_BIOMETRIC", "USE_FINGERPRINT"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-barcode-scanner",
+      "expo-local-authentication",
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": { "origin": false }
+    }
+  }
+}

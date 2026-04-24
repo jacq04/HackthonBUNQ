@@ -1,0 +1,33 @@
+services:
+  tigerbeetle:
+    image: ghcr.io/tigerbeetle/tigerbeetle:0.16.30
+    container_name: kitty-tigerbeetle
+    volumes:
+      - ./tb-data:/data
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f /data/0_0.tigerbeetle ]; then
+          echo "Formatting TigerBeetle data file..."
+          /tigerbeetle format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle
+        fi
+        exec /tigerbeetle start --addresses=0.0.0.0:3000 --development /data/0_0.tigerbeetle
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: kitty-backend
+    depends_on:
+      - tigerbeetle
+    environment:
+      - TIGERBEETLE_ADDRESSES=tigerbeetle:3000
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
