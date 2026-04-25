@@ -52,8 +52,8 @@ class _AcceptInvitePageState extends State<AcceptInvitePage> {
       );
       if (!mounted) return;
       final tail = switch (r.groupStatus) {
-        'active' => 'circle started — first debit posted',
-        'chartered' => 'circle chartered!',
+        'active' => 'pod started — first debit posted',
+        'chartered' => 'pod chartered!',
         _ => 'waiting on others',
       };
       _showToast('${r.acceptedCount}/${r.targetCount} accepted — $tail');

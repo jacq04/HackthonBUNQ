@@ -65,7 +65,7 @@ class _FindCirclePageState extends State<FindCirclePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('find a circle'),
+        title: const Text('find a pod'),
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
           onPressed: () => context.pop(),
@@ -93,7 +93,7 @@ class _FindCirclePageState extends State<FindCirclePage> {
               style: t.headlineMedium?.copyWith(color: KittyColors.bowl)),
           const SizedBox(height: 6),
           Text(
-            'The Matchmaker joins you to an open circle — or forms one with compatible savers.',
+            'The Matchmaker joins you to an open pod — or waitlists you until one matches your goal.',
             style: t.bodyMedium?.copyWith(color: KittyColors.dusk.withValues(alpha: 0.65)),
           ),
           const SizedBox(height: 28),
@@ -157,7 +157,7 @@ class _FindCirclePageState extends State<FindCirclePage> {
           const SizedBox(height: 20),
           Text(
             'Kitty runs a Vetting agent on your bunq history, then the Matchmaker '
-            'either joins you to an open circle, forms a new one, or waitlists you.',
+            'either joins you to an open pod or waitlists you for the next match.',
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(
               color: KittyColors.dusk.withValues(alpha: 0.5),
@@ -179,7 +179,7 @@ class _FindCirclePageState extends State<FindCirclePage> {
     };
     final headline = switch (r.action) {
       'joined' => "you're in",
-      'formed' => "new circle formed",
+      'filled' => "pod filled — invites sent",
       'waitlisted' => "on the waitlist",
       _ => "hmm",
     };
@@ -229,11 +229,17 @@ class _FindCirclePageState extends State<FindCirclePage> {
           ).animate().fadeIn(delay: 460.ms).slideY(begin: 0.1),
           const Spacer(),
           CoralButton(
-            label: r.groupId != null ? 'open circle' : 'done',
+            label: r.groupId != null ? 'open pod' : 'done',
             hero: true,
             onPressed: () {
               if (r.groupId != null) {
-                context.go('/group/${r.groupId}');
+                // Replace this find-circle stack first, then push the group
+                // page on top of /circles so X has somewhere to pop back to.
+                context.go('/circles');
+                final router = GoRouter.of(context);
+                Future.microtask(
+                  () => router.push('/group/${r.groupId}'),
+                );
               } else {
                 context.go('/');
               }

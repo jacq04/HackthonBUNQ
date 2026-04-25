@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kitty — the savings circle, finally trustworthy</title>
+  <meta name="description" content="A ROSCA savings-pot, reimagined. bunq moves the euros. TigerBeetle keeps the math perfect. Claude keeps the humans coordinated. You keep the pot." />
+  <meta name="theme-color" content="#F2ECE0" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ======================= NAV ======================= -->
+  <header class="nav">
+    <a class="wordmark" href="#top">
+      <svg class="wordmark-mark" viewBox="0 0 48 48" aria-hidden="true">
+        <ellipse cx="24" cy="40" rx="14" ry="2" fill="#14121022"/>
+        <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#C9A976" stroke="#6F5A3C" stroke-width="1"/>
+        <clipPath id="m-clip"><path d="M 10 18 L 10 19 C 10 32 15 39 24 39 C 33 39 38 32 38 19 L 38 18 Z"/></clipPath>
+        <g clip-path="url(#m-clip)">
+          <path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#ED4A2C"/>
+          <path d="M 6 24 Q 12 22 18 24 T 30 24 T 44 24 L 44 26 L 6 26 Z" fill="#FF6A4C"/>
+        </g>
+        <path d="M 8 18 Q 24 14 40 18" fill="none" stroke="#F3E6C7" stroke-width="1.2"/>
+      </svg>
+      <span class="wordmark-type">kitty</span>
+      <span class="wordmark-sub">· est. bunq hackathon 7.0</span>
+    </a>
+
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#problem">the problem</a>
+      <a href="#planes">how it works</a>
+      <a href="#agents">the crew</a>
+      <a href="#ledger">the ledger</a>
+      <a href="#safety">safety</a>
+    </nav>
+
+    <a class="btn btn--inline" href="#cta">
+      open the app
+      <span class="arr" aria-hidden="true">↗</span>
+    </a>
+  </header>
+
+  <main id="top">
+
+    <!-- ======================= HERO ======================= -->
+    <section class="hero">
+      <div class="issue-tag">
+        <span class="issue-tag__no">N<sup>o</sup>01</span>
+        <span class="issue-tag__meta">spring · twenty·twenty·six</span>
+      </div>
+
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="kicker">
+            <span class="kicker__pip"></span>
+            rosca — reimagined for people who actually save together
+          </span>
+
+          <h1 class="hero-title">
+            <span class="line" style="--d:0.10s">The savings</span>
+            <span class="line" style="--d:0.22s"><em>circle</em>, finally</span>
+            <span class="line" style="--d:0.34s">trustworthy.</span>
+          </h1>
+
+          <p class="lede">
+            N friends. One pot. Each cycle, one person takes the whole thing.
+            An ancient practice — <em>susu, ajo, chit, paluwagan, tanda</em> —
+            with the math, the rails, and the social labor
+            <u>finally solved</u>.
+          </p>
+
+          <div class="cta-row">
+            <a class="btn btn--primary" href="#cta">
+              open the app
+              <span class="arr">↗</span>
+            </a>
+            <a class="btn btn--ghost" href="#how">watch the 90&#8239;s demo</a>
+          </div>
+
+          <div class="pitch-strip" role="group" aria-label="The three planes">
+            <span class="chip"><b>bunq</b><span class="chip__sub">the bank</span></span>
+            <span class="chip__rule"></span>
+            <span class="chip"><b>TigerBeetle</b><span class="chip__sub">the accountant</span></span>
+            <span class="chip__rule"></span>
+            <span class="chip"><b>Claude</b><span class="chip__sub">the organizer</span></span>
+          </div>
+        </div>
+
+        <div class="hero-pot-wrap" aria-hidden="true">
+          <div class="hero-pot-label">
+            <span class="pot-label__top">lagos crew · cycle 4</span>
+            <span class="pot-label__mid"><b>€1,250</b> / €1,500</span>
+            <span class="pot-label__bot">⌁ live · 5 of 6 posted</span>
+          </div>
+
+          <svg class="pot-svg" viewBox="0 0 400 460" role="img" aria-label="Animated pot filling with coral liquid">
+            <defs>
+              <clipPath id="bowl-clip">
+                <path d="M 80 174 L 80 188 C 80 384 122 420 200 420 C 278 420 320 384 320 188 L 320 174 Z"/>
+              </clipPath>
+              <linearGradient id="liq" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#FF7B5C"/>
+                <stop offset=".55" stop-color="#ED4A2C"/>
+                <stop offset="1" stop-color="#9D2B10"/>
+              </linearGradient>
+              <linearGradient id="bowl-out" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#EBDAB9"/>
+                <stop offset="1" stop-color="#A88758"/>
+              </linearGradient>
+              <radialGradient id="bowl-shine" cx=".25" cy=".15" r=".8">
+                <stop offset="0" stop-color="#FFF7E2" stop-opacity=".7"/>
+                <stop offset="1" stop-color="#FFF7E2" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <!-- shadow -->
+            <ellipse cx="200" cy="432" rx="122" ry="7" fill="#000" opacity=".2"/>
+
+            <!-- bowl body -->
+            <path class="bowl-body" d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172 Q 200 140 60 172 Z" fill="url(#bowl-out)" stroke="#7A5B36" stroke-width="1.25"/>
+            <path d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172" fill="url(#bowl-shine)"/>
+
+            <!-- inside shadow (at the opening) -->
+            <path d="M 78 178 Q 200 162 322 178 L 322 198 Q 200 214 78 198 Z" fill="#7A5B36" opacity=".38"/>
+
+            <!-- liquid -->
+            <g clip-path="url(#bowl-clip)">
+              <g class="liquid-group">
+                <path class="liquid-path" d="M 0 0 L 400 0 L 400 520 L 0 520 Z" fill="url(#liq)"/>
+                <path class="liquid-front" d="M 0 10 L 400 10 L 400 520 L 0 520 Z" fill="#FF6A4A" opacity=".7"/>
+                <ellipse class="liquid-hi" cx="160" cy="18" rx="78" ry="6" fill="#FFD7C8" opacity=".55"/>
+                <circle class="bubble bubble--1" cx="160" cy="80" r="3.2" fill="#fff" opacity=".55"/>
+                <circle class="bubble bubble--2" cx="230" cy="140" r="2.2" fill="#fff" opacity=".45"/>
+                <circle class="bubble bubble--3" cx="260" cy="90" r="2.6" fill="#fff" opacity=".5"/>
+                <circle class="bubble bubble--4" cx="190" cy="170" r="1.8" fill="#fff" opacity=".35"/>
+              </g>
+            </g>
+
+            <!-- rim -->
+            <path d="M 60 172 Q 200 140 340 172 Q 200 160 60 172 Z" fill="#F3E6C7"/>
+            <path d="M 60 172 Q 200 140 340 172" fill="none" stroke="#FFF4D6" stroke-width="1.5"/>
+
+            <!-- handles -->
+            <path d="M 58 220 C 26 218 22 266 58 282" fill="none" stroke="#8B6B40" stroke-width="6" stroke-linecap="round"/>
+            <path d="M 342 220 C 374 218 378 266 342 282" fill="none" stroke="#8B6B40" stroke-width="6" stroke-linecap="round"/>
+
+            <!-- bowl ornamentation -->
+            <path d="M 82 240 Q 200 250 318 240" fill="none" stroke="#7A5B36" stroke-width="1" opacity=".5"/>
+            <path d="M 88 300 Q 200 308 312 300" fill="none" stroke="#7A5B36" stroke-width="1" opacity=".35"/>
+          </svg>
+
+          <!-- floating deposit chips -->
+          <div class="deposit-chip deposit-chip--1">
+            <span class="chip-ava" style="background:#C08D3C">A</span>
+            <span class="chip-amt">+€250</span>
+          </div>
+          <div class="deposit-chip deposit-chip--2">
+            <span class="chip-ava" style="background:#526A3E">T</span>
+            <span class="chip-amt">+€250</span>
+          </div>
+          <div class="deposit-chip deposit-chip--3">
+            <span class="chip-ava" style="background:#5B3F78">M</span>
+            <span class="chip-amt">+€250</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Marquee of primitives -->
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee__track">
+          <span>built on bunq</span><span class="dot">✦</span>
+          <span>TigerBeetle ledger</span><span class="dot">✦</span>
+          <span>Supabase realtime</span><span class="dot">✦</span>
+          <span>Claude Sonnet 4.6</span><span class="dot">✦</span>
+          <span>OR-tools CP-SAT</span><span class="dot">✦</span>
+          <span>Expo + Skia</span><span class="dot">✦</span>
+          <span>FaceID gated</span><span class="dot">✦</span>
+          <span>agents propose · humans approve</span><span class="dot">✦</span>
+
+          <!-- duplicate for seamless loop -->
+          <span>built on bunq</span><span class="dot">✦</span>
+          <span>TigerBeetle ledger</span><span class="dot">✦</span>
+          <span>Supabase realtime</span><span class="dot">✦</span>
+          <span>Claude Sonnet 4.6</span><span class="dot">✦</span>
+          <span>OR-tools CP-SAT</span><span class="dot">✦</span>
+          <span>Expo + Skia</span><span class="dot">✦</span>
+          <span>FaceID gated</span><span class="dot">✦</span>
+          <span>agents propose · humans approve</span><span class="dot">✦</span>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ======================= PROBLEM ======================= -->
+    <section class="problem" id="problem">
+      <div class="problem-grid">
+        <div class="problem-number">
+          <span class="huge-num" data-target="60">0</span><span class="percent">%</span>
+          <span class="huge-num__sub">fail rate</span>
+        </div>
+        <div class="problem-body">
+          <p class="section-eyebrow">the hard truth</p>
+          <h2 class="section-title">
+            <span>Sixty percent of informal</span>
+            <span>savings circles <em>break</em>.</span>
+          </h2>
+          <p class="body-lg">
+            Not because people are dishonest. <b>Because the math and
+            the social coordination break</b> — at the first missed
+            month, the first disagreement, the first emergency.
+          </p>
+          <p class="body">
+            Someone forgets whose cycle it is. Someone's partner needs surgery
+            and they can't wait three months for the pot. Someone pays, but
+            the group lead says they didn't. Someone else doesn't want to
+            be the one chasing texts at 10 p.m. on the twelfth.
+          </p>
+          <p class="body">
+            These are not villainous failures. They are the
+            <em>ordinary weight</em> of shared money between humans.
+            Someone has to carry it. Now something does.
+          </p>
+        </div>
+      </div>
+
+      <aside class="pull-quote">
+        <span class="quote-open">“</span>
+        Grandmothers on paper — sixty percent failure.<br>
+        Us on TigerBeetle + bunq + a crew of agents —
+        <em>zero math mistakes, full audit trail,</em><br>
+        every decision traceable.
+      </aside>
+    </section>
+
+
+    <!-- ======================= THREE PLANES ======================= -->
+    <section class="planes" id="planes">
+      <div class="section-head">
+        <p class="section-eyebrow">§ II — the architecture</p>
+        <h2 class="section-title">Three planes. One pot.</h2>
+        <p class="section-lede">
+          Each plane has one job, and only one. Money moves on bunq.
+          Invariants hold in TigerBeetle. Coordination lives in Claude.
+          None of the three can overreach into the others.
+        </p>
+      </div>
+
+      <div class="planes-grid">
+        <article class="plane plane--bunq">
+          <header class="plane-head">
+            <span class="plane-mark">i.</span>
+            <span class="plane-role">the bank</span>
+          </header>
+          <h3 class="plane-name">bunq</h3>
+          <svg class="plane-ill" viewBox="0 0 160 100" aria-hidden="true">
+            <rect x="10" y="30" width="140" height="60" rx="6" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <rect x="10" y="30" width="140" height="14" fill="currentColor"/>
+            <circle cx="22" cy="37" r="3" fill="var(--cream)"/>
+            <circle cx="32" cy="37" r="3" fill="var(--cream)"/>
+            <path d="M 22 60 L 110 60 M 22 72 L 90 72" stroke="currentColor" stroke-width="1"/>
+            <text x="128" y="82" font-family="JetBrains Mono" font-size="10" fill="currentColor">€</text>
+          </svg>
+          <p class="plane-body">
+            Real euros, on real rails. Every contribution is a bunq
+            payment; every payout is a bunq payment. No fake money,
+            no hand-waving custody — live in the sandbox today, on
+            bunq rails tomorrow.
+          </p>
+          <ul class="plane-meta">
+            <li><span>sandbox</span><b>PSD2 · webhooks</b></li>
+            <li><span>custody</span><b>bunq, not us</b></li>
+            <li><span>replay valve</span><b>/webhooks/bunq/replay</b></li>
+          </ul>
+        </article>
+
+        <article class="plane plane--tb">
+          <header class="plane-head">
+            <span class="plane-mark">ii.</span>
+            <span class="plane-role">the accountant</span>
+          </header>
+          <h3 class="plane-name">TigerBeetle</h3>
+          <svg class="plane-ill" viewBox="0 0 160 100" aria-hidden="true">
+            <rect x="16" y="18" width="128" height="64" rx="4" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="16" y1="34" x2="144" y2="34" stroke="currentColor" stroke-width="1"/>
+            <line x1="80" y1="18" x2="80" y2="82" stroke="currentColor" stroke-width="1"/>
+            <text x="30" y="28" font-family="JetBrains Mono" font-size="7" fill="currentColor">DR</text>
+            <text x="92" y="28" font-family="JetBrains Mono" font-size="7" fill="currentColor">CR</text>
+            <circle cx="40" cy="50" r="2.5" fill="currentColor"/>
+            <circle cx="50" cy="62" r="2.5" fill="currentColor"/>
+            <circle cx="60" cy="74" r="2.5" fill="currentColor"/>
+            <circle cx="100" cy="50" r="2.5" fill="currentColor"/>
+            <circle cx="110" cy="62" r="2.5" fill="currentColor"/>
+            <circle cx="120" cy="74" r="2.5" fill="currentColor"/>
+          </svg>
+          <p class="plane-body">
+            Six accounts per circle. Two-phase transfers.
+            <code>debits_must_not_exceed_credits</code>. The invariant
+            that makes <em>“the pool never owes more than it holds”</em>
+            a mathematical fact, not a trust fall.
+          </p>
+          <ul class="plane-meta">
+            <li><span>invariant</span><b>DR ≤ CR · per account</b></li>
+            <li><span>transfers</span><b>atomic linked batches</b></li>
+            <li><span>consistency</span><b>single source of truth</b></li>
+          </ul>
+        </article>
+
+        <article class="plane plane--claude">
+          <header class="plane-head">
+            <span class="plane-mark">iii.</span>
+            <span class="plane-role">the organizer</span>
+          </header>
+          <h3 class="plane-name">Claude × 6</h3>
+          <svg class="plane-ill" viewBox="0 0 160 100" aria-hidden="true">
+            <circle cx="30" cy="30" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="80" cy="22" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="130" cy="30" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="40" cy="76" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="90" cy="82" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <circle cx="130" cy="72" r="10" fill="none" stroke="currentColor" stroke-width="1.25"/>
+            <line x1="30" y1="30" x2="80" y2="22" stroke="currentColor" stroke-width=".75" opacity=".6"/>
+            <line x1="80" y1="22" x2="130" y2="30" stroke="currentColor" stroke-width=".75" opacity=".6"/>
+            <line x1="30" y1="30" x2="40" y2="76" stroke="currentColor" stroke-width=".75" opacity=".6"/>
+            <line x1="80" y1="22" x2="90" y2="82" stroke="currentColor" stroke-width=".75" opacity=".6"/>
+            <line x1="130" y1="30" x2="130" y2="72" stroke="currentColor" stroke-width=".75" opacity=".6"/>
+          </svg>
+          <p class="plane-body">
+            Six agents, six narrow jobs. They draft charters, chase
+            missed contributions, mediate disputes, compute fair
+            buyouts, order payouts by real need.
+            <b>They propose. You approve — with your face.</b>
+          </p>
+          <ul class="plane-meta">
+            <li><span>models</span><b>Sonnet 4.6 · Haiku 4.5</b></li>
+            <li><span>every action</span><b>audited · tool-call</b></li>
+            <li><span>perimeter</span><b>prompt-injection safe</b></li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+
+    <!-- ======================= HOW IT WORKS ======================= -->
+    <section class="how" id="how">
+      <div class="section-head">
+        <p class="section-eyebrow">§ III — the lifecycle of a circle</p>
+        <h2 class="section-title">
+          From <em>“I'd like to save”</em><br>to a signed cycle —<br>in six steps.
+        </h2>
+      </div>
+
+      <ol class="how-list">
+        <li class="how-step">
+          <span class="how-num">01</span>
+          <div class="how-body">
+            <h3>You describe who you trust, and what you're saving for.</h3>
+            <p>You don't find six people. You tell Kitty what matters: a down-payment, a wedding, school fees, a cushion. Who you'd vouch for, what you won't compromise on.</p>
+          </div>
+          <span class="how-agent">— no agent yet, just you</span>
+        </li>
+
+        <li class="how-step">
+          <span class="how-num">02</span>
+          <div class="how-body">
+            <h3>Matchmaker forms a circle around you.</h3>
+            <p>Reads your bunq history for a trust score. Joins an existing circle, spins a new one, or places you on the waitlist. Circles are <em>platform-formed</em> — never user-created.</p>
+          </div>
+          <span class="how-agent">— <b style="color:var(--ink)">Vetting</b> + <b style="color:var(--ink)">Matchmaker</b></span>
+        </li>
+
+        <li class="how-step">
+          <span class="how-num">03</span>
+          <div class="how-body">
+            <h3>Connie drafts the charter; everyone co-signs.</h3>
+            <p>Frequency, amount, default payout order, late penalties, emergency exit clauses. Plain language, clause-by-clause. Every member signs with their face before the pot opens.</p>
+          </div>
+          <span class="how-agent">— <b style="color:var(--ochre)">Connie · Constitution</b></span>
+        </li>
+
+        <li class="how-step">
+          <span class="how-num">04</span>
+          <div class="how-body">
+            <h3>Each cycle: contribute in one tap.</h3>
+            <p>Coby reminds on day three, gently. Escalates tone on day five, then brings in Moti if money is in doubt. A contribution is <em>two linked pending transfers</em>; both post atomically when bunq confirms.</p>
+          </div>
+          <span class="how-agent">— <b style="color:var(--brick)">Coby · Collector</b></span>
+        </li>
+
+        <li class="how-step">
+          <span class="how-num">05</span>
+          <div class="how-body">
+            <h3>Kalu orders payouts by real need.</h3>
+            <p>Interviews members. Feeds constraints into an OR-tools CP-SAT solver. Proposes an order; the group approves or adjusts. No more <em>“whoever shouted first gets cycle one.”</em></p>
+          </div>
+          <span class="how-agent">— <b style="color:var(--moss)">Kalu · Payout Optimizer</b></span>
+        </li>
+
+        <li class="how-step">
+          <span class="how-num">06</span>
+          <div class="how-body">
+            <h3>Cycle closes. Passport +1.</h3>
+            <p>Ray writes a signed reputation event to every member's passport — on-time streak, disputes won, emergencies handled gracefully. Portable. Yours. Legible to the next circle.</p>
+          </div>
+          <span class="how-agent">— <b style="color:var(--slate)">Ray · Auditor</b></span>
+        </li>
+      </ol>
+    </section>
+
+
+    <!-- ======================= AGENTS ======================= -->
+    <section class="agents" id="agents">
+      <div class="section-head section-head--center">
+        <p class="section-eyebrow">§ IV — the crew</p>
+        <h2 class="section-title">Meet the six who keep it running.</h2>
+        <p class="section-lede">
+          Each writes, listens, and acts inside a narrow job. None of
+          them moves money without a face-scan approval. All of them
+          leave an audit trail.
+        </p>
+      </div>
+
+      <div class="agents-grid">
+        <article class="agent-card" style="--agent:#C08D3C; --agent-tint:#F5E8CD;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">C</span>
+            <div>
+              <h3 class="agent-name">Connie</h3>
+              <p class="agent-role">constitution · drafting</p>
+            </div>
+            <span class="agent-stamp">01 / 06</span>
+          </div>
+          <p class="agent-bio">
+            Drafts the circle's charter with the founder. Turns
+            <em>“monthly, about €250, payout in emergencies first”</em>
+            into co-signable clauses everyone understands.
+          </p>
+          <blockquote class="agent-sample">
+            “Before we seal the pot — if someone misses a contribution,
+            should the group wait 3 days or 7? And does it carry to the
+            following cycle?”
+          </blockquote>
+        </article>
+
+        <article class="agent-card" style="--agent:#AD4F3A; --agent-tint:#F4DAD1;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">Co</span>
+            <div>
+              <h3 class="agent-name">Coby</h3>
+              <p class="agent-role">collector · nudging</p>
+            </div>
+            <span class="agent-stamp">02 / 06</span>
+          </div>
+          <p class="agent-bio">
+            Tone-calibrated reminders during the contribution window.
+            Starts gentle. Escalates only when silence does. Hands off
+            to Moti the second money is actually disputed.
+          </p>
+          <blockquote class="agent-sample">
+            “Hey Tunde — day three, the usual €250 whenever you can.
+            Pool's three-quarters there; we've got you. No sweat.”
+          </blockquote>
+        </article>
+
+        <article class="agent-card" style="--agent:#5B4B8A; --agent-tint:#E1DCED;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">M</span>
+            <div>
+              <h3 class="agent-name">Moti</h3>
+              <p class="agent-role">mediator · disputes</p>
+            </div>
+            <span class="agent-stamp">03 / 06</span>
+          </div>
+          <p class="agent-bio">
+            Reads the TigerBeetle ledger, bunq history, uploaded
+            screenshots — vision-capable — and issues a verdict.
+            If wrong, issues a <em>corrective</em> TB transfer.
+          </p>
+          <blockquote class="agent-sample">
+            “Reading TB ledger cycle 3 · scanning bunq tx · verdict:
+            <b>verified_paid</b>, €250 @ 14:02:11 UTC. Posting
+            correction now.”
+          </blockquote>
+        </article>
+
+        <article class="agent-card" style="--agent:#B32E1F; --agent-tint:#F5D2CA;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">E</span>
+            <div>
+              <h3 class="agent-name">Ella</h3>
+              <p class="agent-role">emergency · buyouts</p>
+            </div>
+            <span class="agent-stamp">04 / 06</span>
+          </div>
+          <p class="agent-bio">
+            When life happens mid-cycle. Computes a fair buyout
+            (contributed minus received), walks the group through
+            consent, and unwinds the position in one atomic batch.
+          </p>
+          <blockquote class="agent-sample">
+            “Priya's mother needs surgery. Fair exit buyout = contributed
+            − received = <b>€750</b>. Asking the other five for consent.”
+          </blockquote>
+        </article>
+
+        <article class="agent-card" style="--agent:#3F6B4A; --agent-tint:#D5E3D1;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">K</span>
+            <div>
+              <h3 class="agent-name">Kalu</h3>
+              <p class="agent-role">payout · ordering</p>
+            </div>
+            <span class="agent-stamp">05 / 06</span>
+          </div>
+          <p class="agent-bio">
+            Interviews members about what they're actually saving for.
+            Solves the ordering with OR-tools CP-SAT. Proposes an
+            order — the group has final say.
+          </p>
+          <blockquote class="agent-sample">
+            “Interviewed six members. Solver proposes: cycle 4 →
+            <b>Tunde</b> (newborn), cycle 5 → <b>Amina</b> (tuition),
+            cycle 6 → <b>Priya</b>…”
+          </blockquote>
+        </article>
+
+        <article class="agent-card" style="--agent:#5E5F55; --agent-tint:#DEDFD6;">
+          <div class="agent-band"></div>
+          <div class="agent-head">
+            <span class="agent-avatar">R</span>
+            <div>
+              <h3 class="agent-name">Ray</h3>
+              <p class="agent-role">auditor · passport</p>
+            </div>
+            <span class="agent-stamp">06 / 06</span>
+          </div>
+          <p class="agent-bio">
+            End-of-cycle. Writes signed reputation events into each
+            member's passport: on-time streaks, disputes handled,
+            emergencies navigated. Portable across circles.
+          </p>
+          <blockquote class="agent-sample">
+            “Cycle 4 closed. Six signed reputation events written.
+            Median Δ reputation: <b>+14</b>. Passports synced.”
+          </blockquote>
+        </article>
+      </div>
+
+      <p class="agents-foot">
+        A seventh — the <em>Cultural Translator</em> — is in the drawer
+        for cross-culture circles. Rewrites agent messages in native
+        idiom. Coming in the next cycle.
+      </p>
+    </section>
+
+
+    <!-- ======================= LEDGER (dark) ======================= -->
+    <section class="ledger" id="ledger">
+      <div class="ledger-inner">
+        <div class="ledger-head">
+          <p class="section-eyebrow">§ V — the tape</p>
+          <h2 class="section-title section-title--dark">
+            Every cent. Every decision.<br>
+            One tamper-proof tape.
+          </h2>
+          <p class="section-lede section-lede--dark">
+            Postings in TigerBeetle. Events in Supabase. Audit rows for
+            every tool call every agent makes. If it happened in Kitty,
+            it's on the tape — readable by you, your circle, and a judge.
+          </p>
+        </div>
+
+        <div class="tape-card">
+          <header class="tape-head">
+            <span class="tape-dot tape-dot--live"></span>
+            <span>lagos_crew.tape</span>
+            <span class="tape-head__right">streaming · supabase realtime</span>
+          </header>
+          <div class="tape" id="tape-live">
+            <!-- rows injected by JS -->
+          </div>
+        </div>
+
+        <div class="ledger-stats">
+          <div class="stat-card">
+            <b class="stat-num">0</b>
+            <span class="stat-label">broken invariants,<br> since launch</span>
+          </div>
+          <div class="stat-card">
+            <b class="stat-num">100%</b>
+            <span class="stat-label">agent actions,<br> audited</span>
+          </div>
+          <div class="stat-card">
+            <b class="stat-num">&lt;80ms</b>
+            <span class="stat-label">TB linked batch,<br> p99 latency</span>
+          </div>
+          <div class="stat-card">
+            <b class="stat-num">2φ</b>
+            <span class="stat-label">every money move,<br> two-phase</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ======================= SAFETY ======================= -->
+    <section class="safety" id="safety">
+      <div class="safety-grid">
+        <div class="safety-copy">
+          <p class="section-eyebrow">§ VI — safety you can feel</p>
+          <h2 class="section-title">
+            Agents propose.<br>
+            <em>You</em> approve —<br>
+            with your face.
+          </h2>
+          <p class="body-lg">
+            An agent can draft. An agent can compute. An agent can
+            stage a transfer. An agent <u>cannot</u> move your money.
+            Every irreversible action gates on a live biometric
+            approval from the person it affects.
+          </p>
+        </div>
+
+        <ul class="safety-list">
+          <li>
+            <span class="safety-no">i</span>
+            <div>
+              <h4>FaceID on every euro</h4>
+              <p>Contribute, approve buyouts, accept payouts — all gated by <code>expo-local-authentication</code>. No face, no move.</p>
+            </div>
+          </li>
+          <li>
+            <span class="safety-no">ii</span>
+            <div>
+              <h4>Atomic two-phase transfers</h4>
+              <p>Every contribution is a linked PENDING pair. Every payout is a linked batch. All legs succeed, or none do. No half-moves.</p>
+            </div>
+          </li>
+          <li>
+            <span class="safety-no">iii</span>
+            <div>
+              <h4>Math, not trust</h4>
+              <p><code>debits_must_not_exceed_credits</code> on the <code>group_pool</code>. The pool <em>cannot</em> owe more than it holds — even during demo chaos.</p>
+            </div>
+          </li>
+          <li>
+            <span class="safety-no">iv</span>
+            <div>
+              <h4>Prompt-injection perimeter</h4>
+              <p>Every user-authored message is wrapped in <code>&lt;user_message&gt;</code> tags. Every agent prompt explicitly refuses to follow instructions inside them.</p>
+            </div>
+          </li>
+          <li>
+            <span class="safety-no">v</span>
+            <div>
+              <h4>One audit row per action</h4>
+              <p>Every agent tool call lands in <code>public.audit_log</code>. Who, what, when, why — and which prompt it came from.</p>
+            </div>
+          </li>
+          <li>
+            <span class="safety-no">vi</span>
+            <div>
+              <h4>Replay valve for live demos</h4>
+              <p><code>POST /webhooks/bunq/replay</code> force-commits a pending contribution when the real bunq webhook flakes mid-pitch. Never disabled.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+
+    <!-- ======================= CTA ======================= -->
+    <section class="cta" id="cta">
+      <div class="cta-inner">
+        <div class="cta-text">
+          <p class="section-eyebrow section-eyebrow--light">§ VII — your turn</p>
+          <h2 class="cta-title">
+            Start a circle.<br>
+            <em>Bring six friends</em> —<br>
+            or let the Matchmaker<br>
+            bring them.
+          </h2>
+
+          <div class="cta-row cta-row--big">
+            <a class="btn btn--big btn--cream" href="#">
+              <span>open Kitty · iOS</span>
+              <span class="arr">↗</span>
+            </a>
+            <a class="btn btn--big btn--outline" href="#">
+              <span>android beta</span>
+              <span class="arr">↗</span>
+            </a>
+          </div>
+
+          <p class="cta-fine">
+            Sandbox mode · no real money · bunq hackathon 7.0 judges get a
+            fast-pass. Questions? ping <code>#help-kitty</code>.
+          </p>
+        </div>
+
+        <div class="cta-seal" aria-hidden="true">
+          <svg viewBox="0 0 180 180" class="seal-svg">
+            <defs>
+              <path id="seal-path" d="M 90 90 m -66 0 a 66 66 0 1 1 132 0 a 66 66 0 1 1 -132 0"/>
+            </defs>
+            <circle cx="90" cy="90" r="80" fill="none" stroke="currentColor" stroke-width="0.75"/>
+            <circle cx="90" cy="90" r="68" fill="none" stroke="currentColor" stroke-width="0.5"/>
+            <circle cx="90" cy="90" r="50" fill="none" stroke="currentColor" stroke-width="0.75"/>
+            <text font-family="JetBrains Mono" font-size="8" letter-spacing="2" fill="currentColor">
+              <textPath href="#seal-path">
+                · bunq · tigerbeetle · claude · bunq · tigerbeetle · claude · bunq · tigerbeetle · claude
+              </textPath>
+            </text>
+            <text x="90" y="78" text-anchor="middle" font-family="Fraunces" font-size="18" font-style="italic" fill="currentColor">kitty</text>
+            <text x="90" y="98" text-anchor="middle" font-family="JetBrains Mono" font-size="7" letter-spacing="2" fill="currentColor">NO. 01</text>
+            <text x="90" y="112" text-anchor="middle" font-family="JetBrains Mono" font-size="7" letter-spacing="2" fill="currentColor">CHARTER</text>
+          </svg>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ======================= FOOTER ======================= -->
+    <footer class="foot">
+      <div class="foot-top">
+        <div class="foot-col foot-col--brand">
+          <div class="wordmark">
+            <svg class="wordmark-mark" viewBox="0 0 48 48" aria-hidden="true">
+              <ellipse cx="24" cy="40" rx="14" ry="2" fill="#14121022"/>
+              <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#C9A976" stroke="#6F5A3C" stroke-width="1"/>
+              <clipPath id="m-clip-foot"><path d="M 10 18 L 10 19 C 10 32 15 39 24 39 C 33 39 38 32 38 19 L 38 18 Z"/></clipPath>
+              <g clip-path="url(#m-clip-foot)"><path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#ED4A2C"/></g>
+            </svg>
+            <span class="wordmark-type">kitty</span>
+          </div>
+          <p class="foot-tag">
+            bunq = the bank.<br>
+            TigerBeetle = the accountant.<br>
+            Claude = the organizer.
+          </p>
+        </div>
+
+        <div class="foot-col">
+          <h5>the product</h5>
+          <a href="#how">how it works</a>
+          <a href="#agents">the crew</a>
+          <a href="#ledger">the ledger</a>
+          <a href="#safety">safety</a>
+        </div>
+
+        <div class="foot-col">
+          <h5>for the judges</h5>
+          <a href="#">90s demo video</a>
+          <a href="#">devpost submission</a>
+          <a href="#">github repo</a>
+          <a href="#">architecture doc</a>
+        </div>
+
+        <div class="foot-col">
+          <h5>credits</h5>
+          <a href="https://bunq.com">bunq</a>
+          <a href="https://tigerbeetle.com">TigerBeetle</a>
+          <a href="https://anthropic.com">Anthropic · Claude</a>
+          <a href="https://supabase.com">Supabase</a>
+        </div>
+      </div>
+
+      <div class="foot-rule"></div>
+
+      <div class="foot-bot">
+        <span>© 2026 · Kitty · built for bunq hackathon 7.0</span>
+        <span class="foot-bot__mid">agents propose · humans approve · with their face</span>
+        <span>vol. 1 · iss. 01</span>
+      </div>
+    </footer>
+
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>

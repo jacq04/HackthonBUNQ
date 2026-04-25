@@ -109,12 +109,14 @@ def parse_md_table() -> list[dict[str, str]]:
             continue
         if headers is None:
             continue
-        if line.strip().startswith("|---"):
-            continue
         if not line.strip().startswith("|"):
             continue
         cells = [c.strip() for c in line.strip("|").split("|")]
         if len(cells) != len(headers):
+            continue
+        # Skip a markdown divider row even when it has spaces after the pipes,
+        # e.g. `| ----- | ---- |`.
+        if all(c.replace("-", "").replace(":", "").strip() == "" for c in cells):
             continue
         rows.append(dict(zip(headers, cells)))
     return rows

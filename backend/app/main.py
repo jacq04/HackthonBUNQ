@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.bunq import get_bunq_client
 from app.config import settings
 from app.routes import (
+    admin,
     auth_bunq,
     charter,
     chat,
@@ -22,6 +23,7 @@ from app.routes import (
     health,
     invites,
     matchmaker,
+    me,
     members,
     payout,
     webhooks,
@@ -64,6 +66,7 @@ app.add_middleware(
 # Routers — registered lazily so a missing dep in one route doesn't sink the app.
 app.include_router(health.router)
 app.include_router(auth_bunq.router)
+app.include_router(me.router)
 app.include_router(groups.router)
 app.include_router(members.router)
 app.include_router(matchmaker.router)
@@ -77,6 +80,7 @@ app.include_router(payout.router)
 app.include_router(disputes.router)
 app.include_router(emergency.router)
 app.include_router(webhooks.router)
+app.include_router(admin.router)
 
 
 @app.get("/", tags=["meta"])

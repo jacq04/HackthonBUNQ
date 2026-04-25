@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     # the bunq hackathon toolkit's bunq_context.json format.
     bunq_context_dir: str = "~/.kitty/bunq-contexts"
     bunq_default_label: str = "default"
+    # The bunq label whose monetary account collects ROSCA contributions.
+    # Conventionally Asha — she is the platform admin, not a member.
+    bunq_platform_label: str = "asha"
+    # Admin fee retained from each cycle's payout, in basis points.
+    # 500 bps = 5% — winner receives the remaining 95% of the pot.
+    payout_admin_fee_bps: int = 500
     # If set, overrides bunq_context_dir — used for single-file toolkit compatibility.
     bunq_context_file: str = ""
 

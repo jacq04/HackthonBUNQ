@@ -114,11 +114,15 @@ async def create_group(body: CreateGroupBody, user_id: CurrentUserId) -> CreateG
 
 @router.get("")
 async def list_my_groups(user_id: CurrentUserId) -> list[dict[str, Any]]:
+    """Pods the signed-in user has actually joined (accepted+) — invitations
+    they haven't responded to live behind /me/invitations instead, so the
+    wallet doesn't conflate "pending invite" with "joined pod"."""
     sb = get_supabase()
     r = (
         sb.table("members")
-        .select("group_id,groups(*)")
+        .select("group_id,status,groups(*)")
         .eq("user_id", str(user_id))
+        .in_("status", ["accepted", "active", "received", "exited_clean"])
         .execute()
     )
     return [row["groups"] for row in (r.data or []) if row.get("groups")]

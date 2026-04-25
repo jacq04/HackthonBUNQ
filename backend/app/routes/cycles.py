@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from app.agents.bidding import get_bidding
 from app.agents.tools import audit, emit_event, post_agent_message
 from app.auth import CurrentUserId
+from app.bunq import get_bunq_client
 from app.db import get_supabase
 from app.ledger.tb_client import (
     AccountCode,
@@ -290,11 +291,20 @@ async def resolve_cycle(
             status_code=500, detail="failed to determine winner"
         )
 
-    # ── Execute payout via TB linked batch (same shape as routes/payout.run_payout).
+    # ── Compute the split: winner gets (1 - fee_bps/10000), platform retains rest.
+    from app.config import settings
+
     pool_cents = int(group["contribution_amount_cents"]) * int(group["cycle_count"])
+    fee_bps = int(settings.payout_admin_fee_bps)
+    fee_cents = (pool_cents * fee_bps) // 10000
+    winner_cents = pool_cents - fee_cents
+
     winner_member = (
         sb.table("members")
-        .select("tb_received_account_id,users!inner(display_name)")
+        .select(
+            "tb_received_account_id,"
+            "users!inner(display_name,bunq_label)"
+        )
         .eq("group_id", str(group_id))
         .eq("user_id", winner_user_id)
         .single()
@@ -303,17 +313,26 @@ async def resolve_cycle(
     )
     gateway = int(group["tb_gateway_account_id"])
     pool = int(group["tb_pool_account_id"])
+    penalty = int(group["tb_penalty_account_id"])
     member_received = int(winner_member["tb_received_account_id"])
 
-    # Payout leaves the pool ONCE (via gateway). The second leg tracks the
-    # winner's accrual on their received account — debit-side now on gateway,
-    # not on pool again (that would trip debits_must_not_exceed_credits).
+    # Atomic 3-leg linked batch:
+    #   1. pool → gateway: full pot release (the only debit on pool — invariant intact)
+    #   2. gateway → member_received: winner's 95% accrual
+    #   3. gateway → penalty_pool: 5% admin fee retention
+    # The penalty_pool account is reused as the per-group fee bucket; the
+    # ledger trail makes the split auditable. All three legs commit or none do.
     transfer_code = TransferCode.BID_WON if winner_source == "bid" else TransferCode.PAYOUT_FALLBACK
+    legs: list[TransferLeg] = [
+        TransferLeg(pool, gateway, pool_cents, transfer_code),
+        TransferLeg(gateway, member_received, winner_cents, transfer_code),
+    ]
+    if fee_cents > 0:
+        legs.append(
+            TransferLeg(gateway, penalty, fee_cents, transfer_code)
+        )
     tb_ids = linked_batch(
-        [
-            TransferLeg(pool, gateway, pool_cents, transfer_code),
-            TransferLeg(gateway, member_received, pool_cents, transfer_code),
-        ],
+        legs,
         group_id=group_id,
         cycle_month=cycle_month,
     )
@@ -325,11 +344,113 @@ async def resolve_cycle(
             "group_id": str(group_id),
             "recipient_user_id": winner_user_id,
             "cycle_month": cycle_month,
-            "amount_cents": pool_cents,
+            # amount_cents is what the winner actually receives — the 5%
+            # platform fee stays on the platform's bunq + ledger, never paid out.
+            "amount_cents": winner_cents,
             "tb_transfer_ids": [str(x) for x in tb_ids],
             "status": "pending",
         }
     ).execute()
+
+    # ── Real-money leg: platform.bunq → winner.bunq for `winner_cents`.
+    # Best-effort — if it fails, TB stays the source of truth and the event
+    # downgrades to payout.ledger_only.
+    bunq_payment_id: str | None = None
+    bunq_error: str | None = None
+    bunq_suspension: dict | None = None
+    winner_bunq_label = (winner_member.get("users") or {}).get("bunq_label")
+    try:
+        platform_client = get_bunq_client(settings.bunq_platform_label)
+        await platform_client.ensure_session()
+        platform_acct_id = await platform_client.get_primary_account_id()
+
+        # Resolve the winner's IBAN — first from their stored mandate, then by
+        # asking bunq directly if their session is provisioned on this host.
+        winner_iban: str | None = None
+        winner_name: str | None = (winner_member.get("users") or {}).get("display_name")
+        mandate = (
+            sb.table("mandates")
+            .select("iban")
+            .eq("group_id", str(group_id))
+            .eq("user_id", winner_user_id)
+            .eq("status", "active")
+            .order("signed_at", desc=True)
+            .limit(1)
+            .execute()
+            .data
+        )
+        if mandate and mandate[0].get("iban"):
+            winner_iban = mandate[0]["iban"]
+        if not winner_iban and winner_bunq_label:
+            try:
+                wc = get_bunq_client(winner_bunq_label)
+                await wc.ensure_session()
+                w_acct_id = await wc.get_primary_account_id()
+                for a in await wc.list_monetary_accounts():
+                    if a.get("id") == w_acct_id:
+                        for alias in a.get("alias") or []:
+                            if alias.get("type") == "IBAN":
+                                winner_iban = alias.get("value")
+                                break
+                        break
+            except Exception as e:  # noqa: BLE001
+                log.warning(
+                    "payout.winner_iban_lookup_failed",
+                    label=winner_bunq_label,
+                    error=str(e),
+                )
+
+        if not winner_iban or not winner_name:
+            raise RuntimeError("winner IBAN/name unavailable — bunq leg skipped")
+
+        pay = await platform_client.make_payment(
+            from_account_id=platform_acct_id,
+            amount_cents=winner_cents,
+            counterparty_iban=winner_iban,
+            counterparty_name=winner_name,
+            description=(
+                f"Kitty · {group['name']} · cycle {cycle_month} payout "
+                f"(net of {fee_bps/100:.1f}% fee)"
+            ),
+            currency=group["currency"],
+        )
+        bunq_payment_id = str(pay.get("id") or "") or None
+        if bunq_payment_id:
+            # GET the payment back to inspect `payment_suspended_outgoing` —
+            # it's only populated on the read, never on the POST. bunq holds
+            # any first-time payment to a NEW_COUNTERPARTY for ~24h before
+            # the credit actually posts on the recipient's side.
+            try:
+                detail = await platform_client.get_payment(
+                    account_id=platform_acct_id,
+                    payment_id=int(bunq_payment_id),
+                )
+                bunq_suspension = detail.get("payment_suspended_outgoing")
+            except Exception as e:  # noqa: BLE001
+                log.warning("payout.bunq_get_failed", error=str(e))
+                bunq_suspension = None
+
+            if bunq_suspension and (bunq_suspension.get("status") or "").upper() == "PENDING":
+                # Funds earmarked on the sender, recipient not yet credited.
+                sb.table("payouts").update(
+                    {
+                        "bunq_payment_id": bunq_payment_id,
+                        "status": "suspended",
+                        # committed_at deliberately stays null — the payment
+                        # hasn't actually settled yet.
+                    }
+                ).eq("id", payout_row_id).execute()
+            else:
+                sb.table("payouts").update(
+                    {
+                        "bunq_payment_id": bunq_payment_id,
+                        "status": "committed",
+                        "committed_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                ).eq("id", payout_row_id).execute()
+    except Exception as e:  # noqa: BLE001
+        bunq_error = str(e)
+        log.warning("payout.bunq_failed", error=bunq_error)
     sb.table("cycles").update(
         {"status": "paid", "payout_at": datetime.now(timezone.utc).isoformat()}
     ).eq("id", cycle["id"]).execute()
@@ -357,30 +478,158 @@ async def resolve_cycle(
         ).execute()
         await emit_event(group_id, type="group.completed", payload={})
 
+    # bunq leg outcome:
+    #   - bunq_payment_id + PENDING suspension → payout.bunq_suspended
+    #   - bunq_payment_id, no suspension       → payout.committed
+    #   - no bunq_payment_id                   → payout.ledger_only
+    is_suspended = bool(
+        bunq_suspension
+        and (bunq_suspension.get("status") or "").upper() == "PENDING"
+    )
+    if is_suspended:
+        settled_event_type = "payout.bunq_suspended"
+    elif bunq_payment_id:
+        settled_event_type = "payout.committed"
+    else:
+        settled_event_type = "payout.ledger_only"
+    suspension_summary = None
+    if bunq_suspension:
+        suspension_summary = {
+            "status": bunq_suspension.get("status"),
+            "reason": bunq_suspension.get("reason"),
+            "expected_arrival": (
+                (bunq_suspension.get("payment_arrival_expected") or {}).get("time")
+            ),
+            "time_execution": bunq_suspension.get("time_execution"),
+            "suspended_id": bunq_suspension.get("id"),
+        }
     await emit_event(
         group_id,
-        type="bid.resolved" if winner_source == "bid" else "payout.ledger_only",
+        type=settled_event_type,
         payload={
             "cycle_id": cycle["id"],
             "cycle_month": cycle_month,
             "winner_user_id": winner_user_id,
             "winner_display_name": winner_member["users"]["display_name"],
             "winner_source": winner_source,
-            "amount_cents": pool_cents,
+            "pot_cents": pool_cents,
+            "amount_cents": winner_cents,
+            "fee_cents": fee_cents,
+            "fee_bps": fee_bps,
             "rationale": rationale,
+            "bunq_payment_id": bunq_payment_id,
+            "bunq_error": bunq_error,
+            "bunq_suspension": suspension_summary,
             "tb_transfer_ids": [str(x) for x in tb_ids],
         },
     )
+    if winner_source == "bid":
+        await emit_event(
+            group_id,
+            type="bid.resolved",
+            payload={
+                "cycle_id": cycle["id"],
+                "cycle_month": cycle_month,
+                "winner_user_id": winner_user_id,
+                "winner_display_name": winner_member["users"]["display_name"],
+                "rationale": rationale,
+            },
+        )
+    fee_eur = fee_cents / 100
+    win_eur = winner_cents / 100
+    if is_suspended:
+        suspension_reason = (suspension_summary or {}).get("reason") or "PENDING"
+        expected_arrival = (suspension_summary or {}).get("expected_arrival") or "soon"
+        bunq_tail = (
+            f" · bunq holding payment #{bunq_payment_id} ({suspension_reason}) "
+            f"— credit expected {expected_arrival}"
+        )
+    elif bunq_payment_id:
+        bunq_tail = f" · paid via bunq (#{bunq_payment_id})"
+    else:
+        bunq_tail = " · ledger-only (bunq leg pending)"
     await post_agent_message(
         group_id,
         agent_name="bidding",
-        text=rationale,
+        text=(
+            f"{rationale} Winner receives €{win_eur:.2f} "
+            f"(€{fee_eur:.2f} retained as {fee_bps/100:.1f}% admin fee).{bunq_tail}"
+        ),
         metadata={
             "cycle_month": cycle_month,
             "winner_user_id": winner_user_id,
             "winner_source": winner_source,
+            "winner_amount_cents": winner_cents,
+            "fee_cents": fee_cents,
+            "bunq_payment_id": bunq_payment_id,
         },
     )
+
+    # ── Regret notifications: 2+ bids, one winner — message every loser
+    # privately so they see the outcome in their feed and know they're queued
+    # for the next cycle. Single bidder + fallback paths skip this (nothing
+    # to regret). All sends are best-effort — failures shouldn't roll back
+    # the payout that already committed.
+    if len(bids) >= 2:
+        winner_name = winner_member["users"]["display_name"]
+        regretted: list[str] = []
+        for b in bids:
+            loser_id = b["user_id"]
+            if loser_id == winner_user_id:
+                continue
+            loser_name = (b.get("users") or {}).get("display_name") or "there"
+            try:
+                await post_agent_message(
+                    group_id,
+                    agent_name="bidding",
+                    channel="direct",
+                    recipient_user_id=loser_id,
+                    text=(
+                        f"Hi {loser_name} — cycle {cycle_month} went to "
+                        f"{winner_name} this round. Your bid "
+                        f"(urgency: {b.get('urgency')}) was considered but "
+                        f"didn't win. The pot rolls — bid again next cycle, "
+                        f"or wait for your scheduled slot."
+                    ),
+                    metadata={
+                        "cycle_month": cycle_month,
+                        "winner_user_id": winner_user_id,
+                        "winner_display_name": winner_name,
+                        "your_bid_id": b["id"],
+                        "your_urgency": b.get("urgency"),
+                        "kind": "bid.regret",
+                    },
+                )
+                await emit_event(
+                    group_id,
+                    type="bid.regret",
+                    payload={
+                        "cycle_id": cycle["id"],
+                        "cycle_month": cycle_month,
+                        "user_id": loser_id,
+                        "winner_user_id": winner_user_id,
+                        "your_urgency": b.get("urgency"),
+                    },
+                )
+                regretted.append(loser_id)
+            except Exception as e:  # noqa: BLE001
+                log.warning(
+                    "cycles.regret_send_failed",
+                    user_id=loser_id,
+                    error=str(e),
+                )
+        if regretted:
+            await audit(
+                actor="agent:bidding",
+                action="bid.regret",
+                resource_type="cycle",
+                resource_id=cycle["id"],
+                diff={
+                    "cycle_month": cycle_month,
+                    "winner_user_id": winner_user_id,
+                    "regretted_user_ids": regretted,
+                },
+            )
 
     return {
         "ok": True,
@@ -388,6 +637,17 @@ async def resolve_cycle(
         "winner_user_id": winner_user_id,
         "winner_display_name": winner_member["users"]["display_name"],
         "winner_source": winner_source,
-        "amount_cents": pool_cents,
+        "pot_cents": pool_cents,
+        "amount_cents": winner_cents,
+        "fee_cents": fee_cents,
+        "fee_bps": fee_bps,
+        "bunq_payment_id": bunq_payment_id,
+        "bunq_error": bunq_error,
+        "bunq_suspension": suspension_summary,
+        "payout_status": (
+            "suspended" if is_suspended
+            else "committed" if bunq_payment_id
+            else "pending"
+        ),
         "rationale": rationale,
     }

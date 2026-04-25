@@ -38,3 +38,28 @@ make bunq-funds LABEL=asha AMOUNT=500
 
 - API keys in your local `SANDBOX_USERS.md` are **sandbox only** — they won't work against production. Still, don't leak them — git-ignored for that reason.
 - If you rotate a key, run `python -m scripts.bunq_bootstrap rotate --label <name>` to re-authenticate and refresh the cached session.
+  ┌───────┬──────────────┬──────────────┐
+  │ label │ display name │    phone     │
+  ├───────┼──────────────┼──────────────┤
+  │ asha  │ A. Stewart   │ +31618053181 │
+  ├───────┼──────────────┼──────────────┤
+  │ malik │ M. Luu       │ +31618056688 │
+  ├───────┼──────────────┼──────────────┤
+  │ priya │ T. Smith     │ +31618059655 │
+  ├───────┼──────────────┼──────────────┤
+  │ tunde │ W. Warren    │ +31618062287 │
+  ├───────┼──────────────┼──────────────┤
+  │ fatou │ B. Karapinar │ +31618065397 │
+  ├───────┼──────────────┼──────────────┤
+  │ raj   │ I. Stewart   │ +31618068593 │
+  └───────┴──────────────┴──────────────┘
+  ┌───────┬──────────────┬──────────────┐
+  │ label │    phone     │ display name │
+  ├───────┼──────────────┼──────────────┤
+  │ ahmed │ +31617113970 │ T. Matthews  │
+  ├───────┼──────────────┼──────────────┤
+  │ chen  │ +31617116972 │ D. Cadieux   │
+  ├───────┼──────────────┼──────────────┤
+  │ iris  │ +31617119559 │ S. Quinlan   │
+  ├───────┼──────────────┼──────────────┤
+  │ kofi  │ +31617122907 │ L. The       │

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OtpType;
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/coral_button.dart';
+import '../../core/widgets/pod_wordmark.dart';
 import '../../services/api.dart';
 import '../../services/supabase.dart';
 
@@ -553,17 +554,17 @@ class _Hero extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Kitty',
-            style: t.displayLarge?.copyWith(color: KittyColors.bowl))
+        const PodWordmark(size: 96)
             .animate()
             .fadeIn(duration: 500.ms)
             .slideX(begin: -0.05, curve: Curves.easeOutCubic),
         const SizedBox(height: 8),
         Text(
-          "Rotating savings,\nwith a pot that can't lie.",
+          'Chit together.',
           style: t.bodyLarge?.copyWith(
             color: KittyColors.dusk.withValues(alpha: 0.78),
             height: 1.4,
+            letterSpacing: 0.2,
           ),
         ).animate().fadeIn(delay: 180.ms, duration: 500.ms).slideX(begin: -0.05),
       ],

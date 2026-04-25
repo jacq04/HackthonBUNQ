@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/coral_button.dart';
-import '../../core/widgets/pot.dart';
+import '../../core/widgets/piggy.dart';
 import '../../services/api.dart';
 import '../../services/supabase.dart';
 
@@ -20,9 +20,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
   Map<String, dynamic>? _group;
   List<dynamic>? _members;
   List<Map<String, dynamic>> _events = [];
+  int _myPayments = 0;
+  int _myContribCents = 0;
+  int _cyclesDone = 0;
   RealtimeChannel? _channel;
   RealtimeChannel? _groupChannel;
   RealtimeChannel? _membersChannel;
+  RealtimeChannel? _cyclesChannel;
 
   @override
   void initState() {
@@ -31,7 +35,9 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
     _load();
     _subscribe();
     _subscribeGroupAndMembers();
+    _subscribeProgress();
     _fetchEvents();
+    _fetchProgress();
   }
 
   /// Refresh when the app window comes back to foreground (e.g. after the
@@ -85,6 +91,75 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
     } catch (_) {/* noop */}
   }
 
+  /// Compute the two anonymous progress metrics:
+  ///   - myPayments: how many distinct cycles this signed-in user already
+  ///     has a `posted` contribution in.
+  ///   - cyclesDone: how many cycles in this group reached a payout
+  ///     (`paid` or `fallback`).
+  Future<void> _fetchProgress() async {
+    final uid = supabase.auth.currentUser?.id;
+    if (uid == null) return;
+    try {
+      final mine = await supabase
+          .from('contributions')
+          .select('cycle_month,amount_cents')
+          .eq('group_id', widget.groupId)
+          .eq('user_id', uid)
+          .eq('status', 'posted');
+      final mineList = List<Map<String, dynamic>>.from(mine);
+      final myMonths =
+          mineList.map((r) => r['cycle_month'] as int).toSet();
+      final myCents = mineList.fold<int>(
+        0,
+        (s, r) => s + ((r['amount_cents'] ?? 0) as int),
+      );
+
+      final paid = await supabase
+          .from('cycles')
+          .select('cycle_month, status')
+          .eq('group_id', widget.groupId)
+          .inFilter('status', ['paid', 'fallback']);
+      final paidList = List<Map<String, dynamic>>.from(paid);
+
+      if (!mounted) return;
+      setState(() {
+        _myPayments = myMonths.length;
+        _myContribCents = myCents;
+        _cyclesDone = paidList.length;
+      });
+    } catch (_) {/* swallow — card just shows 0/0 until next refresh */}
+  }
+
+  /// Realtime: refetch progress whenever this user posts a contribution
+  /// or any cycle resolves. Cheaper than re-running _load on every event.
+  void _subscribeProgress() {
+    _cyclesChannel = supabase
+        .channel('cycles:${widget.groupId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'cycles',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'group_id',
+            value: widget.groupId,
+          ),
+          callback: (_) => _fetchProgress(),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'contributions',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'group_id',
+            value: widget.groupId,
+          ),
+          callback: (_) => _fetchProgress(),
+        )
+        .subscribe();
+  }
+
   Future<void> _fetchEvents() async {
     final rows = await supabase
         .from('events')
@@ -92,7 +167,13 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
         .eq('group_id', widget.groupId)
         .order('created_at', ascending: false)
         .limit(50);
-    if (mounted) setState(() => _events = List<Map<String, dynamic>>.from(rows));
+    final list = List<Map<String, dynamic>>.from(rows);
+    final seen = <Object?>{};
+    final deduped = [
+      for (final r in list)
+        if (seen.add(r['id'])) r,
+    ];
+    if (mounted) setState(() => _events = deduped);
   }
 
   /// Navigate to the bid screen for the latest open cycle in this group.
@@ -129,8 +210,16 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
           ),
           callback: (payload) {
             if (!mounted) return;
+            final row = Map<String, dynamic>.from(payload.newRecord);
+            final id = row['id'];
+            // Race: this same row may already have been pulled in by the
+            // initial _fetchEvents query, or by a previous realtime tick if
+            // the subscription resubscribes. Dedupe by id.
             setState(() {
-              _events = [Map<String, dynamic>.from(payload.newRecord), ..._events].take(50).toList();
+              _events = [
+                row,
+                ..._events.where((e) => e['id'] != id),
+              ].take(50).toList();
             });
           },
         )
@@ -143,6 +232,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
     if (_channel != null) supabase.removeChannel(_channel!);
     if (_groupChannel != null) supabase.removeChannel(_groupChannel!);
     if (_membersChannel != null) supabase.removeChannel(_membersChannel!);
+    if (_cyclesChannel != null) supabase.removeChannel(_cyclesChannel!);
     super.dispose();
   }
 
@@ -150,16 +240,22 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final g = _group;
-    final filled = _events
-        .where((e) => e['type'] == 'contribution.posted')
-        .fold<int>(0, (s, e) => s + ((e['payload']?['amount_cents'] ?? 0) as int));
-    final target = g == null ? 1 : ((g['contribution_amount_cents'] as int) * (g['cycle_count'] as int));
+    // The piggy reflects how much THIS user has chipped in across cycles.
+    // It only ever grows — read from the contributions table (authoritative)
+    // not from the events tape which is capped to the latest 50 rows.
+    final filled = _myContribCents;
+    final target = g == null
+        ? 1
+        : ((g['contribution_amount_cents'] as int) * (g['cycle_count'] as int));
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            _Header(group: g, onClose: () => context.pop()),
+            _Header(
+              group: g,
+              onClose: () => context.canPop() ? context.pop() : context.go('/'),
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 120),
@@ -168,8 +264,8 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
                   const SizedBox(height: 16),
                   Center(
                     child: Hero(
-                      tag: 'pot-${widget.groupId}',
-                      child: Pot(
+                      tag: 'piggy-${widget.groupId}',
+                      child: Piggy(
                         filled: target == 0 ? 0 : filled / target,
                         size: 260,
                       ),
@@ -190,7 +286,12 @@ class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingOb
                     ),
                   ),
                   const SizedBox(height: 28),
-                  if (_members != null) _MembersCard(members: _members!),
+                  if (g != null)
+                    _ProgressCard(
+                      cycleCount: (g['cycle_count'] ?? 0) as int,
+                      myPayments: _myPayments,
+                      cyclesDone: _cyclesDone,
+                    ),
                   const SizedBox(height: 20),
                   _LedgerCard(events: _events),
                 ],
@@ -395,17 +496,29 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _MembersCard extends StatelessWidget {
-  final List<dynamic> members;
-  const _MembersCard({required this.members});
+/// Anonymous circle-progress card. Members stay private — the card surfaces
+/// only what matters to the signed-in user: how many cycles they have already
+/// contributed in, and how many cycles are left in the rotation.
+class _ProgressCard extends StatelessWidget {
+  final int cycleCount;
+  final int myPayments;
+  final int cyclesDone;
+  const _ProgressCard({
+    required this.cycleCount,
+    required this.myPayments,
+    required this.cyclesDone,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final remaining = (cycleCount - cyclesDone).clamp(0, cycleCount);
+    final paymentsMade = myPayments.clamp(0, cycleCount);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
         decoration: BoxDecoration(
           color: KittyColors.soft.withValues(alpha: 0.7),
           borderRadius: const BorderRadius.all(KittyRadius.xl),
@@ -414,74 +527,93 @@ class _MembersCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.only(bottom: 6, left: 4),
-              child: Text('MEMBERS (${members.length})',
-                  style: t.labelSmall?.copyWith(color: KittyColors.dusk.withValues(alpha: 0.55))),
+              padding: const EdgeInsets.only(left: 2, bottom: 10),
+              child: Text(
+                'CIRCLE PROGRESS',
+                style: t.labelSmall?.copyWith(
+                  color: KittyColors.dusk.withValues(alpha: 0.55),
+                  letterSpacing: 1.2,
+                ),
+              ),
             ),
-            ...members.asMap().entries.map((e) {
-              final i = e.key;
-              final m = e.value as Map<String, dynamic>;
-              final u = m['users'] as Map<String, dynamic>? ?? {};
-              final name = (u['display_name'] as String?) ?? '?';
-              final admin = m['role'] == 'admin';
-              return _MemberRow(name: name, admin: admin, cycle: m['payout_cycle'] as int?)
-                  .animate()
-                  .fadeIn(duration: 320.ms, delay: (60 * i).ms)
-                  .slideX(begin: -0.06);
-            }),
+            Row(
+              children: [
+                Expanded(
+                  child: _ProgressStat(
+                    label: 'your payments',
+                    value: '$paymentsMade',
+                    sub: 'of $cycleCount',
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 44,
+                  color: KittyColors.dusk.withValues(alpha: 0.08),
+                ),
+                Expanded(
+                  child: _ProgressStat(
+                    label: 'cycles remaining',
+                    value: '$remaining',
+                    sub: 'of $cycleCount',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: cycleCount == 0 ? 0 : paymentsMade / cycleCount,
+                minHeight: 8,
+                backgroundColor: KittyColors.dusk.withValues(alpha: 0.08),
+                valueColor: const AlwaysStoppedAnimation(KittyColors.coral),
+              ),
+            ),
           ],
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.08);
   }
 }
 
-class _MemberRow extends StatelessWidget {
-  final String name;
-  final bool admin;
-  final int? cycle;
-  const _MemberRow({required this.name, required this.admin, required this.cycle});
+class _ProgressStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String sub;
+  const _ProgressStat({
+    required this.label,
+    required this.value,
+    required this.sub,
+  });
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: const BoxDecoration(color: KittyColors.bowl, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: Text(name.characters.first.toUpperCase(),
-                style: t.labelLarge?.copyWith(color: KittyColors.cream)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          label,
+          style: t.bodySmall?.copyWith(
+            color: KittyColors.dusk.withValues(alpha: 0.55),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text.rich(
-              TextSpan(children: [
-                TextSpan(
-                    text: name,
-                    style: t.titleSmall?.copyWith(color: KittyColors.dusk, fontWeight: FontWeight.w600)),
-                if (admin)
-                  const TextSpan(
-                      text: '  ★', style: TextStyle(color: KittyColors.coral, fontSize: 14)),
-              ]),
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: t.headlineMedium?.copyWith(
+            color: KittyColors.bowl,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
-          if (cycle != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: KittyColors.cream,
-                borderRadius: const BorderRadius.all(KittyRadius.full),
-              ),
-              child: Text('cycle $cycle',
-                  style: t.labelSmall?.copyWith(color: KittyColors.bowl)),
-            ),
-        ],
-      ),
+        ),
+        Text(
+          sub,
+          style: t.labelSmall?.copyWith(
+            color: KittyColors.dusk.withValues(alpha: 0.45),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -500,6 +632,10 @@ class _LedgerCard extends StatelessWidget {
         return 'contribution pending — €${(amt / 100).toStringAsFixed(0)}';
       case 'payout.committed':
         return 'payout committed — €${(amt / 100).toStringAsFixed(0)}';
+      case 'payout.bunq_suspended':
+        final sus = p['bunq_suspension'] as Map<String, dynamic>? ?? {};
+        final reason = sus['reason'] as String? ?? 'PENDING';
+        return 'bunq holding payout — €${(amt / 100).toStringAsFixed(0)} ($reason)';
       case 'payout.ledger_only':
         return 'payout on ledger — €${(amt / 100).toStringAsFixed(0)} (bunq pending)';
       case 'dispute.resolved':
@@ -507,7 +643,7 @@ class _LedgerCard extends StatelessWidget {
       case 'emergency.executed':
         return 'emergency refund — €${((p['refund_cents'] ?? 0) as int) / 100}';
       case 'matchmaker.formed':
-        return 'circle formed by matchmaker';
+        return 'pod formed by matchmaker';
       case 'charter.finalized':
         return 'charter finalized';
       default:
@@ -519,6 +655,7 @@ class _LedgerCard extends StatelessWidget {
         'contribution.posted' => '✓',
         'contribution.pending' => '⋯',
         'payout.committed' => '◈',
+        'payout.bunq_suspended' => '⏳',
         'payout.ledger_only' => '◇',
         'dispute.resolved' => '⚖',
         'emergency.proposed' => '!',

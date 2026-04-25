@@ -81,6 +81,18 @@ class KittyApi {
     return MatchResult.fromJson(r);
   }
 
+  // ─── pod landing (bunq wallet view) ──────────────────────────────
+  Future<Map<String, dynamic>> myProfile() => _get('/me/profile');
+
+  Future<List<Map<String, dynamic>>> myAccounts() => _getList('/me/accounts');
+  Future<List<Map<String, dynamic>>> myInvitations() => _getList('/me/invitations');
+
+  Future<List<Map<String, dynamic>>> myTransactions({int? accountId, int days = 7}) async {
+    final q = StringBuffer('/me/transactions?days=$days');
+    if (accountId != null) q.write('&account_id=$accountId');
+    return _getList(q.toString());
+  }
+
   // ─── Circle Lifecycle v2 ────────────────────────────────────────────
   Future<RespondResult> respondToInvite(
     String groupId, {
@@ -114,6 +126,47 @@ class KittyApi {
 
   Future<Map<String, dynamic>> resolveCycle(String groupId, int cycleMonth) =>
       _post('/groups/$groupId/cycles/$cycleMonth/resolve', {});
+
+  // ─── Admin dashboard ────────────────────────────────────────────────
+  Future<Map<String, dynamic>> adminBootstrap() => _post('/admin/bootstrap', {});
+  Future<Map<String, dynamic>> adminCreateCircle(Map<String, dynamic> body) =>
+      _post('/admin/circles', body);
+  Future<Map<String, dynamic>> adminUpdateCircle(
+    String groupId,
+    Map<String, dynamic> body,
+  ) async {
+    final r = await _dio.patch('/admin/circles/$groupId', data: body);
+    return Map<String, dynamic>.from(r.data as Map);
+  }
+  Future<Map<String, dynamic>> adminDeleteCircle(String groupId) async {
+    final r = await _dio.delete('/admin/circles/$groupId');
+    return Map<String, dynamic>.from(r.data as Map);
+  }
+  Future<Map<String, dynamic>> adminGrant(String targetUserId) =>
+      _post('/admin/grant?target_user_id=$targetUserId', {});
+  Future<Map<String, dynamic>> adminRevoke(String targetUserId) =>
+      _post('/admin/revoke?target_user_id=$targetUserId', {});
+  Future<Map<String, dynamic>> adminOverview() => _get('/admin/overview');
+  Future<List<Map<String, dynamic>>> adminGroups() => _getList('/admin/groups');
+  Future<Map<String, dynamic>> adminGroup(String id) => _get('/admin/groups/$id');
+  Future<List<Map<String, dynamic>>> adminAudit({int limit = 200, String? actorKind}) {
+    final q = StringBuffer('/admin/audit?limit=$limit');
+    if (actorKind != null) q.write('&actor_kind=$actorKind');
+    return _getList(q.toString());
+  }
+  Future<List<Map<String, dynamic>>> adminAgentMessages({int limit = 200}) =>
+      _getList('/admin/agent-messages?limit=$limit');
+  Future<List<Map<String, dynamic>>> adminEvents({int limit = 200, String? typePrefix}) {
+    final q = StringBuffer('/admin/events?limit=$limit');
+    if (typePrefix != null) q.write('&type_prefix=$typePrefix');
+    return _getList(q.toString());
+  }
+  Future<List<Map<String, dynamic>>> adminWaitlist() => _getList('/admin/waitlist');
+  Future<List<Map<String, dynamic>>> adminCycles({String? groupId, int limit = 200}) {
+    final q = StringBuffer('/admin/cycles?limit=$limit');
+    if (groupId != null) q.write('&group_id=$groupId');
+    return _getList(q.toString());
+  }
 }
 
 class RespondResult {

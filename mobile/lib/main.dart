@@ -7,8 +7,11 @@ import 'features/auth/sign_in_page.dart';
 import 'features/cycle/place_bid_page.dart';
 import 'features/group/accept_invite_page.dart';
 import 'features/group/group_detail_page.dart';
+import 'features/admin/admin_page.dart';
+import 'features/admin/admin_pod_detail_page.dart';
 import 'features/home/home_page.dart';
 import 'features/matchmaker/find_circle_page.dart';
+import 'features/wallet/wallet_page.dart';
 import 'services/supabase.dart';
 
 void main() async {
@@ -49,7 +52,14 @@ class _KittyAppState extends State<KittyApp> {
       },
       routes: [
         GoRoute(path: '/sign-in', builder: (_, __) => const SignInPage()),
-        GoRoute(path: '/', builder: (_, __) => const HomePage()),
+        GoRoute(path: '/', builder: (_, __) => const WalletPage()),
+        GoRoute(path: '/circles', builder: (_, __) => const HomePage()),
+        GoRoute(path: '/admin', builder: (_, __) => const AdminPage()),
+        GoRoute(
+          path: '/admin/pods/:id',
+          builder: (_, s) =>
+              AdminPodDetailPage(groupId: s.pathParameters['id']!),
+        ),
         GoRoute(path: '/find-circle', builder: (_, __) => const FindCirclePage()),
         GoRoute(
           path: '/group/:id',
@@ -76,7 +86,7 @@ class _KittyAppState extends State<KittyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Kitty',
+      title: 'pod',
       debugShowCheckedModeBanner: false,
       theme: kittyTheme(brightness: Brightness.light),
       darkTheme: kittyTheme(brightness: Brightness.dark),

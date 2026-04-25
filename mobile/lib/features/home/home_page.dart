@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/coral_button.dart';
 import '../../services/api.dart';
-import '../../services/supabase.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -43,17 +42,21 @@ class _HomePageState extends State<HomePage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('your circles',
-                      style: t.headlineLarge?.copyWith(color: KittyColors.bowl)),
-                  TextButton(
-                    onPressed: () async {
-                      await supabase.auth.signOut();
-                      if (context.mounted) context.go('/sign-in');
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    tooltip: 'back to wallet',
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
                     },
-                    child: const Text('sign out'),
                   ),
+                  const SizedBox(width: 4),
+                  Text('your pods',
+                      style: t.headlineLarge?.copyWith(color: KittyColors.bowl)),
                 ],
               ),
               const SizedBox(height: 16),
@@ -87,7 +90,7 @@ class _HomePageState extends State<HomePage> {
                     children: [
                       Expanded(
                         child: CoralButton(
-                          label: 'find a circle',
+                          label: 'find a pod',
                           hero: true,
                           onPressed: () => context.push('/find-circle'),
                         ),
@@ -182,13 +185,13 @@ class _EmptyState extends StatelessWidget {
               .animate(onPlay: (c) => c.repeat())
               .shimmer(duration: 3.seconds, color: KittyColors.coral.withValues(alpha: 0.6)),
           const SizedBox(height: 18),
-          Text('no circles yet',
+          Text('no pods yet',
               style: t.headlineSmall?.copyWith(color: KittyColors.bowl)),
           const SizedBox(height: 6),
           SizedBox(
             width: 260,
             child: Text(
-              "Tell our Matchmaker what you're saving for — we'll find or form a circle that fits.",
+              "Tell our Matchmaker what you're saving for — we'll match you to a pod that fits.",
               textAlign: TextAlign.center,
               style: t.bodyMedium?.copyWith(color: KittyColors.dusk.withValues(alpha: 0.6)),
             ),

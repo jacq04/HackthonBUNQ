@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from app.agents.matchmaker import get_matchmaker
@@ -34,7 +34,7 @@ class FindCircleRequest(BaseModel):
 
 
 class FindCircleResponse(BaseModel):
-    action: Literal["joined", "formed", "waitlisted", "none"]
+    action: Literal["joined", "filled", "waitlisted", "none"]
     group_id: str | None = None
     group_name: str | None = None
     payout_cycle: int | None = None
@@ -45,6 +45,73 @@ class FindCircleResponse(BaseModel):
 @router.post("/find-circle", response_model=FindCircleResponse)
 async def find_circle(body: FindCircleRequest, user_id: CurrentUserId) -> FindCircleResponse:
     sb = get_supabase()
+
+    # Platform admins run circles; they don't join them. Refuse upfront so the
+    # admin can't accidentally end up in the founding set.
+    me = (
+        sb.table("users")
+        .select("is_admin")
+        .eq("id", str(user_id))
+        .single()
+        .execute()
+    )
+    if (me.data or {}).get("is_admin"):
+        raise HTTPException(
+            status_code=403,
+            detail="admins manage the platform — they don't join circles",
+        )
+
+    # If the user is already invited/accepted/active in a non-archived pod,
+    # short-circuit. Otherwise the run below would clobber their
+    # waitlist_status='matched' back to 'waiting' (the matchmaker finds no
+    # eligible circle because they're already in one) and they'd reappear
+    # in the admin waitlist tab even though they have an active membership.
+    existing = (
+        sb.table("members")
+        .select(
+            "group_id,status,payout_cycle,"
+            "groups!inner(id,name,status)"
+        )
+        .eq("user_id", str(user_id))
+        .in_("status", ["invited", "accepted", "active", "received"])
+        .execute()
+        .data
+        or []
+    )
+    live = [
+        row
+        for row in existing
+        if (row.get("groups") or {}).get("status")
+        not in ("archived", "completed", "cancelled")
+    ]
+    if live:
+        # Prefer an active/accepted membership over an invited one so the
+        # client lands on the actual group screen; the invited case still
+        # surfaces the group_id (the client can route to the accept page).
+        priority = {"active": 0, "received": 0, "accepted": 1, "invited": 2}
+        live.sort(key=lambda r: priority.get(r["status"], 9))
+        pick = live[0]
+        g = pick.get("groups") or {}
+        u_existing = (
+            sb.table("users")
+            .select("trust_score")
+            .eq("id", str(user_id))
+            .single()
+            .execute()
+            .data
+            or {}
+        )
+        return FindCircleResponse(
+            action="joined",
+            group_id=g.get("id"),
+            group_name=g.get("name"),
+            payout_cycle=pick.get("payout_cycle"),
+            trust_score=int(u_existing.get("trust_score") or 50),
+            rationale=(
+                f"Already a {pick['status']} member of {g.get('name')!r} — "
+                "open the pod instead of re-running the matchmaker."
+            ),
+        )
 
     # 1. Persist preferences + goal so Matchmaker + peer Matchmakers see them.
     prefs = {
@@ -87,13 +154,53 @@ async def find_circle(body: FindCircleRequest, user_id: CurrentUserId) -> FindCi
         f"Preferences: {prefs}\n"
         f"Goal: {body.goal!r}\n"
         f"Trust score: {trust}\n\n"
-        "Call list_open_circles and list_waitlist, then decide: JOIN, FORM, or WAITLIST. "
-        "Finish with exactly one of propose_join_existing / form_new_circle / add_to_waitlist."
+        "Call list_open_circles AND list_waitlist, then decide:\n"
+        "  - FILL (preferred when seats_open == 1 + count of compatible "
+        "waitlist matches): propose_fill_circle(group_id=, "
+        "additional_user_ids=[...]).\n"
+        "  - JOIN (single open seat, no other waitlist need): "
+        "propose_join_existing(group_id=).\n"
+        "  - WAITLIST (no eligible circle): add_to_waitlist(rationale=).\n"
+        "NEVER attempt to form a new circle — circle creation is admin-only."
     )
-    result = await get_matchmaker().run(prompt, context={"user_id": user_id})
+    try:
+        result = await get_matchmaker().run(prompt, context={"user_id": user_id})
+    except Exception as e:  # noqa: BLE001
+        # Record the failure as a matchmaker audit row so the admin
+        # control-room reflects it.
+        sb.table("audit_log").insert(
+            {
+                "actor": "agent:matchmaker",
+                "action": "matchmaker.error",
+                "resource_type": "user",
+                "resource_id": str(user_id),
+                "diff": {"ok": False, "error": str(e)[:500]},
+            }
+        ).execute()
+        log.exception("matchmaker.run_failed", user_id=str(user_id))
+        raise HTTPException(
+            status_code=502,
+            detail=f"matchmaker run failed: {e}",
+        ) from e
+
+    # Record the run summary itself (separate from per-tool audit rows the
+    # agent already writes) so the dashboard sees a one-line "matchmaker.run".
+    sb.table("audit_log").insert(
+        {
+            "actor": "agent:matchmaker",
+            "action": "matchmaker.run",
+            "resource_type": "user",
+            "resource_id": str(user_id),
+            "diff": {
+                "ok": True,
+                "tool_calls": len(result.tool_calls),
+                "preferences": prefs,
+            },
+        }
+    ).execute()
 
     # 4. Extract the decision from tool_calls.
-    action: Literal["joined", "formed", "waitlisted", "none"] = "none"
+    action: Literal["joined", "filled", "waitlisted", "none"] = "none"
     group_id: str | None = None
     group_name: str | None = None
     payout_cycle: int | None = None
@@ -104,13 +211,12 @@ async def find_circle(body: FindCircleRequest, user_id: CurrentUserId) -> FindCi
             group_id = tc["input"].get("group_id")
             rationale = tc["input"].get("rationale", "")
             payout_cycle = (tc.get("result") or {}).get("payout_cycle")
-        elif tc["name"] == "form_new_circle":
-            action = "formed"
-            rationale = tc["input"].get("rationale", "")
+        elif tc["name"] == "propose_fill_circle":
             r = tc.get("result") or {}
-            group_id = r.get("group_id")
-            group_name = tc["input"].get("name")
-            payout_cycle = 1  # founder / requester always lands at cycle 1
+            if r.get("ok"):
+                action = "filled"
+                group_id = tc["input"].get("group_id")
+                rationale = tc["input"].get("rationale", "")
         elif tc["name"] == "add_to_waitlist":
             action = "waitlisted"
             rationale = tc["input"].get("rationale", "")

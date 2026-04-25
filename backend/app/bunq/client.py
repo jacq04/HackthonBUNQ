@@ -380,6 +380,20 @@ class BunqClient:
         resp.raise_for_status()
         return [_unbox(x) for x in resp.json()["Response"]]
 
+    async def get_payment(
+        self, *, account_id: int, payment_id: int
+    ) -> dict[str, Any]:
+        """Fetch a single payment back from bunq — needed to inspect
+        `payment_suspended_outgoing`, which is only populated on the GET
+        response, not on the POST that creates the payment."""
+        await self.ensure_session()
+        resp = await self._http.get(
+            f"/user/{self._user_id}/monetary-account/{account_id}/payment/{payment_id}",
+            headers=self._auth_headers(),
+        )
+        resp.raise_for_status()
+        return _first_response(resp.json())
+
     async def register_webhook(
         self,
         *,

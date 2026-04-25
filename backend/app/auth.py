@@ -36,3 +36,22 @@ def _bearer_token(request: Request) -> str | None:
 
 
 CurrentUserId = Annotated[uuid.UUID, Depends(current_user_id)]
+
+
+async def require_admin(user_id: CurrentUserId) -> uuid.UUID:
+    """Gate that 403s every non-admin caller. Admin is the
+    `users.is_admin` bit; flip it via SQL or `/admin/grant` (admin-only)."""
+    sb = get_supabase()
+    row = (
+        sb.table("users")
+        .select("is_admin")
+        .eq("id", str(user_id))
+        .single()
+        .execute()
+    )
+    if not (row.data or {}).get("is_admin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="admin only")
+    return user_id
+
+
+AdminUserId = Annotated[uuid.UUID, Depends(require_admin)]

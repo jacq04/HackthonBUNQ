@@ -217,6 +217,22 @@ async def respond(
             group_id=group_id,
             cycle_month=1,
         )
+        # Persist a `contributions` row so the admin dashboard's money-flow
+        # rollup (contributions count + sum) reflects the inflow. Status is
+        # 'posted' because the TB linked_batch above already committed.
+        contribution_row_id = str(uuid.uuid4())
+        sb.table("contributions").insert(
+            {
+                "id": contribution_row_id,
+                "group_id": str(group_id),
+                "user_id": str(user_id),
+                "cycle_month": 1,
+                "amount_cents": contribution_cents,
+                "status": "posted",
+                "posted_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ).execute()
+
         await emit_event(
             group_id,
             type="contribution.posted",
@@ -224,9 +240,55 @@ async def respond(
                 "user_id": str(user_id),
                 "amount_cents": contribution_cents,
                 "cycle_month": 1,
+                "contribution_id": contribution_row_id,
                 "reason": "first debit on accept",
             },
         )
+
+        # Move actual euros: member.bunq → platform.bunq.
+        # The TB leg above is the source-of-truth ledger; this is the
+        # real-money mirror so funds land in Asha's collection account.
+        try:
+            from app.config import settings
+
+            platform_client = get_bunq_client(settings.bunq_platform_label)
+            await platform_client.ensure_session()
+            platform_acct_id = await platform_client.get_primary_account_id()
+            platform_iban: str | None = None
+            for a in await platform_client.list_monetary_accounts():
+                if a.get("id") == platform_acct_id:
+                    for alias in a.get("alias") or []:
+                        if alias.get("type") == "IBAN":
+                            platform_iban = alias.get("value")
+                            break
+                    break
+            platform_name = settings.bunq_platform_label
+            if not platform_iban:
+                raise RuntimeError("platform IBAN missing — run bunq bootstrap")
+
+            if bunq_label:
+                user_client = get_bunq_client(bunq_label)
+                await user_client.ensure_session()
+                user_acct_id = await user_client.get_primary_account_id()
+                pay = await user_client.make_payment(
+                    from_account_id=user_acct_id,
+                    amount_cents=contribution_cents,
+                    counterparty_iban=platform_iban,
+                    counterparty_name=platform_name,
+                    description=f"Kitty · {group_row['name']} · cycle 1",
+                )
+                await emit_event(
+                    group_id,
+                    type="bunq.payment.posted",
+                    payload={
+                        "user_id": str(user_id),
+                        "amount_cents": contribution_cents,
+                        "bunq_payment_id": pay.get("id"),
+                        "to_iban": platform_iban,
+                    },
+                )
+        except Exception as e:  # noqa: BLE001
+            log.error("invites.bunq_payment_failed", error=str(e))
     except Exception as e:  # noqa: BLE001
         log.error("invites.first_debit_failed", error=str(e))
 
@@ -281,7 +343,10 @@ def _counts(sb: Any, group_id: uuid.UUID) -> dict[str, int]:
 
 def _transition_to_chartered(sb: Any, group_id: uuid.UUID, cycle_count: int) -> None:
     """Flip the group to 'chartered' and retire any still-open invites past the
-    required headcount so the buffer doesn't create ghost members."""
+    required headcount so the buffer doesn't create ghost members. Retired
+    invitees go back on the global waitlist (waitlist_status='waiting') with
+    their original match_preferences intact, so the Matchmaker can match
+    them to a different pod on the next run."""
     sb.table("groups").update({"status": "chartered"}).eq(
         "id", str(group_id)
     ).execute()
@@ -294,11 +359,31 @@ def _transition_to_chartered(sb: Any, group_id: uuid.UUID, cycle_count: int) -> 
         .execute()
     )
     if excess.data:
+        retired_user_ids = [row["user_id"] for row in excess.data]
         sb.table("members").update({"status": "exited_clean"}).eq(
             "group_id", str(group_id)
         ).in_("status", ["invited"]).execute()
+        # Put them back on the waitlist so Matchmaker re-considers them.
+        from datetime import datetime, timezone
+
+        sb.table("users").update(
+            {
+                "waitlist_status": "waiting",
+                "waitlist_since": datetime.now(timezone.utc).isoformat(),
+            }
+        ).in_("id", retired_user_ids).execute()
+        sb.table("events").insert(
+            {
+                "group_id": str(group_id),
+                "type": "invite.retired",
+                "payload": {
+                    "user_ids": retired_user_ids,
+                    "reason": "pod chartered without them",
+                },
+            }
+        ).execute()
         log.info(
             "invites.retired_buffer",
             group_id=str(group_id),
-            count=len(excess.data),
+            count=len(retired_user_ids),
         )
