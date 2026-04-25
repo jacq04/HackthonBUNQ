@@ -22,7 +22,7 @@ Future<bool> _showCircleSheet(
   final r = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: KittyColors.cream,
+    backgroundColor: KittyColors.creamDark,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: KittyRadius.l),
     ),

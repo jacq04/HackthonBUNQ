@@ -368,10 +368,10 @@ class _LifecycleBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               colors: [
-                KittyColors.coral.withValues(alpha: 0.9),
-                KittyColors.ember.withValues(alpha: 0.85),
+                KittyColors.coral,
+                KittyColors.ember,
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -390,14 +390,14 @@ class _LifecycleBanner extends StatelessWidget {
                     Text(
                       "you're invited",
                       style: t.titleMedium?.copyWith(
-                        color: KittyColors.cream,
-                        fontWeight: FontWeight.w700,
+                        color: KittyColors.ink,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                     Text(
                       '$accepted of $target accepted so far',
                       style: t.bodySmall?.copyWith(
-                        color: KittyColors.cream.withValues(alpha: 0.85),
+                        color: KittyColors.ink.withValues(alpha: 0.75),
                       ),
                     ),
                   ],
@@ -405,8 +405,8 @@ class _LifecycleBanner extends StatelessWidget {
               ),
               CoralButton(
                 label: 'review',
-                color: KittyColors.cream,
-                foreground: KittyColors.bowl,
+                color: KittyColors.ink,
+                foreground: KittyColors.cream,
                 onPressed: () async {
                   // Accept page pops with `true` on success. Capture the
                   // ancestor state BEFORE the await so we don't reach for

@@ -42,7 +42,14 @@ class _CoralButtonState extends State<CoralButton> {
   Widget build(BuildContext context) {
     final disabled = widget.onPressed == null || widget.loading;
     final bg = widget.color ?? KittyColors.coral;
-    final fg = widget.foreground ?? KittyColors.cream;
+    // Bright accents (orange CTA, savings green) need dark ink for contrast.
+    // Everything else (deep dark bowls, soft cards) takes the light text.
+    final fg = widget.foreground ??
+        (bg == KittyColors.coral ||
+                bg == KittyColors.bowl ||
+                bg == KittyColors.moss
+            ? KittyColors.ink
+            : KittyColors.cream);
 
     return GestureDetector(
       onTapDown: (_) => _press(true),
@@ -64,7 +71,7 @@ class _CoralButtonState extends State<CoralButton> {
           ),
           decoration: BoxDecoration(
             color: disabled ? bg.withValues(alpha: 0.35) : bg,
-            borderRadius: const BorderRadius.all(KittyRadius.l),
+            borderRadius: const BorderRadius.all(KittyRadius.full),
             boxShadow: disabled
                 ? []
                 : widget.hero

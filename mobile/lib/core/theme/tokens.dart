@@ -5,32 +5,50 @@ import 'package:flutter/material.dart';
 class KittyColors {
   const KittyColors._();
 
-  // Brand core
-  static const bowl = Color(0xFF3E4C29); // deep olive
-  static const cream = Color(0xFFF5EEDC); // page bg (light)
-  static const coral = Color(0xFFE9663C); // primary CTA
-  static const dusk = Color(0xFF2B2D29); // text (light)
-  static const soft = Color(0xFFDBD4C0); // muted surface
-  static const ember = Color(0xFFB33E1F); // coral-pressed
-  static const moss = Color(0xFF6A9F55); // success
-  static const amber = Color(0xFFD8A23B); // warning
-  static const rust = Color(0xFFC0443B); // danger
+  // Brand core — modeled on the Marvilo/bunq UI kit (PDF page 4): pure black
+  // canvas, charcoal cards, bunq orange as the brand accent + CTA, green as
+  // a savings/success accent. The app is LOCKED to dark mode (main.dart).
+  //
+  // Token meanings have been flipped vs. the original light-canvas design so
+  // existing call sites stay valid:
+  //   - `dusk` was dark ink → now LIGHT ink (legible on the black canvas).
+  //   - `bowl` was deep teal accent → now BUNQ ORANGE (the brand accent that
+  //      most "color: bowl" headlines/borders should pop in).
+  //   - `cream` stays LIGHT — it's still used for text-on-orange and as the
+  //      contrasting fill for accent pills.
+  //   - `soft` is now a muted dark surface for cards on the canvas.
+  static const bowl = Color(0xFFFF7A1A);  // bunq orange brand accent
+  static const cream = Color(0xFFF2F2F2); // near-white text/pill fill
+  static const coral = Color(0xFFFF7A1A); // bunq orange — primary CTA
+  static const dusk = Color(0xFFF4F4F4);  // primary text color on dark canvas
+  static const soft = Color(0xFF1A1A1A);  // muted card surface on the canvas
+  static const ember = Color(0xFFE66200); // orange-pressed
+  static const moss = Color(0xFF1AC97F);  // bunq Together green — savings/success accent
+  static const amber = Color(0xFFE6B23A); // warning
+  static const rust = Color(0xFFE05A4D);  // danger
+  // Explicit dark-ink token — used when we need maximum contrast on a bright
+  // accent (e.g. dark text on the orange CTA pill). Keep pristine: the rest of
+  // the palette is light, so this is the singular "very dark" token.
+  static const ink = Color(0xFF0A0A0A);
 
-  // Agent accent hues (stay identifiable across themes)
+  // Agent accent hues — round colored discs in the kit's icon row.
   static const agentConstitution = Color(0xFFD4A04A);
-  static const agentCollector = Color(0xFF5580C4);
-  static const agentMediator = Color(0xFF8159B2);
-  static const agentEmergency = Color(0xFFC0443B);
-  static const agentCoach = Color(0xFF6A9F55);
-  static const agentMatchmaker = Color(0xFFE9663C);
-  static const agentVetting = Color(0xFF3E4C29);
-  static const agentAuditor = Color(0xFF2B2D29);
+  static const agentCollector = Color(0xFF3F8AC4);
+  static const agentMediator = Color(0xFFB13895); // pink/magenta disc
+  static const agentEmergency = Color(0xFFE05A4D);
+  static const agentCoach = Color(0xFF1AC97F);
+  static const agentMatchmaker = Color(0xFFFF7A1A);
+  static const agentVetting = Color(0xFF1B6E78); // teal disc
+  static const agentAuditor = Color(0xFF0E2747); // navy disc
 
-  // Dark-mode equivalents
-  static const bowlDark = Color(0xFFCDE0A6);
-  static const creamDark = Color(0xFF14140F);
-  static const duskDark = Color(0xFFF1EFE4);
-  static const softDark = Color(0xFF2D2A22);
+  // Dark theme variants — used by theme.dart to drive the canvas + ink + cards.
+  // The kit's hero canvas is pure black; the cards are a hair lighter so the
+  // edge reads. We keep the orange as the secondary `bowlDark` accent so any
+  // theme-driven secondary tinting picks up the brand color.
+  static const bowlDark = Color(0xFFFF7A1A);   // orange accent in dark mode
+  static const creamDark = Color(0xFF0A0A0A);  // pure black canvas (with a whisper of warmth)
+  static const duskDark = Color(0xFFF4F4F4);   // near-white ink
+  static const softDark = Color(0xFF1A1A1A);   // muted card on the canvas
 }
 
 class KittySpacing {
@@ -45,10 +63,12 @@ class KittySpacing {
 
 class KittyRadius {
   const KittyRadius._();
-  static const Radius s = Radius.circular(12);
-  static const Radius m = Radius.circular(20);
-  static const Radius l = Radius.circular(28);
-  static const Radius xl = Radius.circular(36);
+  // bunq's surfaces lean even rounder than our previous values — bigger pills
+  // on buttons, softer card corners.
+  static const Radius s = Radius.circular(14);
+  static const Radius m = Radius.circular(22);
+  static const Radius l = Radius.circular(30);
+  static const Radius xl = Radius.circular(40);
   static const Radius full = Radius.circular(999);
 }
 

@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(width: 12),
                       CoralButton(
                         label: 'join by code',
-                        color: KittyColors.bowl,
+                        color: KittyColors.soft,
                         foreground: KittyColors.cream,
                         onPressed: () {/* TODO QR join */},
                       ),

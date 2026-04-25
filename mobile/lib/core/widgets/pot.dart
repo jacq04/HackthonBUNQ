@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/tokens.dart';
 
-/// The signature Kitty widget: a round ceramic bowl that fills with coral
-/// "liquid" as contributions post. Uses a CustomPainter with a cosine-wave
+/// The signature Kitty widget: a round ceramic bowl that fills with bunq-
+/// green "liquid" as contributions post. Uses a CustomPainter with a cosine-
+/// wave
 /// surface + specular highlight + drop-shadow so it reads as physical, not
 /// flat. Animates fill ratio with a spring curve (elastic settle).
 class Pot extends StatefulWidget {
@@ -103,12 +104,14 @@ class _PotPainter extends CustomPainter {
     );
 
     // ── Bowl body (the ceramic) ─────────────────────────────────────────────
+    // Cool off-white ceramic with a subtle teal-tint shadow at the base, so
+    // the bowl reads as china against the bunq-green liquid.
     final bowlGrad = Paint()
       ..shader = LinearGradient(
         colors: [
-          KittyColors.soft,
-          KittyColors.soft.withValues(alpha: 0.85),
-          const Color(0xFFC6BBA0),
+          const Color(0xFFF6F8F4),
+          const Color(0xFFE2E9DF),
+          const Color(0xFFB7C4B8),
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
@@ -139,8 +142,8 @@ class _PotPainter extends CustomPainter {
     final liquidGrad = Paint()
       ..shader = LinearGradient(
         colors: [
-          const Color(0xFFE9663C),
-          const Color(0xFFD84823),
+          const Color(0xFF1AC97F), // bunq Together green — surface
+          const Color(0xFF0B8056), // deeper teal at the floor
         ],
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,

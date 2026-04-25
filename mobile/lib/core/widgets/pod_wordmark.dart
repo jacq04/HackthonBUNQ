@@ -13,13 +13,13 @@ class PodWordmark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'pod',
+      'pod.',
       style: GoogleFonts.inter(
         fontSize: size,
         fontWeight: FontWeight.w900,
-        letterSpacing: -2.0,
+        letterSpacing: -size * 0.06,
         height: 0.9,
-        color: color ?? KittyColors.bowl,
+        color: color ?? KittyColors.coral,
       ),
     );
   }

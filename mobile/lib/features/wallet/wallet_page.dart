@@ -261,8 +261,8 @@ class _WaitlistBanner extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [
-            Color(0xFFE9663C),
-            Color(0xFFD84823),
+            KittyColors.bowl,
+            KittyColors.ember,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -281,8 +281,8 @@ class _WaitlistBanner extends StatelessWidget {
                 child: Text(
                   "you're on the waitlist",
                   style: t.titleMedium?.copyWith(
-                    color: KittyColors.cream,
-                    fontWeight: FontWeight.w700,
+                    color: KittyColors.ink,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -294,7 +294,7 @@ class _WaitlistBanner extends StatelessWidget {
                 ? 'Matchmaker is searching — no perfect fit right now, hold tight.'
                 : 'Matchmaker is matching you with these pods:',
             style: t.bodySmall?.copyWith(
-              color: KittyColors.cream.withValues(alpha: 0.9),
+              color: KittyColors.ink.withValues(alpha: 0.85),
             ),
           ),
           if (candidates.isNotEmpty) ...[
@@ -309,7 +309,7 @@ class _WaitlistBanner extends StatelessWidget {
                       width: 6,
                       height: 6,
                       decoration: const BoxDecoration(
-                        color: KittyColors.cream,
+                        color: KittyColors.ink,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -321,7 +321,7 @@ class _WaitlistBanner extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: t.bodySmall?.copyWith(
-                          color: KittyColors.cream.withValues(alpha: 0.92),
+                          color: KittyColors.ink.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
@@ -351,9 +351,9 @@ class _InvitationsBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 14, 14, 16),
       decoration: BoxDecoration(
-        color: KittyColors.bowl,
+        color: KittyColors.soft,
         borderRadius: const BorderRadius.all(KittyRadius.l),
-        boxShadow: KittyShadows.lift,
+        border: Border.all(color: KittyColors.coral.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,8 +431,8 @@ class _InvitationRow extends StatelessWidget {
                 ),
                 child: Text('review',
                     style: t.labelSmall?.copyWith(
-                      color: KittyColors.cream,
-                      fontWeight: FontWeight.w700,
+                      color: KittyColors.ink,
+                      fontWeight: FontWeight.w800,
                     )),
               ),
             ],
@@ -570,16 +570,9 @@ class _CirclesCard extends StatelessWidget {
       onTap: () => context.push('/circles'),
       child: Ink(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              KittyColors.bowl,
-              KittyColors.bowl.withValues(alpha: 0.82),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+          color: KittyColors.soft,
           borderRadius: const BorderRadius.all(KittyRadius.xl),
-          boxShadow: KittyShadows.card,
+          border: Border.all(color: KittyColors.cream.withValues(alpha: 0.05)),
         ),
         padding: const EdgeInsets.all(20),
         child: Row(
@@ -588,8 +581,8 @@ class _CirclesCard extends StatelessWidget {
               width: 48,
               height: 48,
               alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: KittyColors.cream.withValues(alpha: 0.16),
+              decoration: const BoxDecoration(
+                color: KittyColors.coral,
                 shape: BoxShape.circle,
               ),
               child: const Text('🫕', style: TextStyle(fontSize: 26)),
@@ -603,7 +596,7 @@ class _CirclesCard extends StatelessWidget {
                     'your pods',
                     style: t.titleMedium?.copyWith(
                       color: KittyColors.cream,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -614,13 +607,14 @@ class _CirclesCard extends StatelessWidget {
                             ? ((first?['name'] as String?) ?? '1 pod')
                             : '$count pods',
                     style: t.bodySmall?.copyWith(
-                      color: KittyColors.cream.withValues(alpha: 0.75),
+                      color: KittyColors.cream.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_rounded, color: KittyColors.cream),
+            Icon(Icons.arrow_forward_rounded,
+                color: KittyColors.cream.withValues(alpha: 0.6)),
           ],
         ),
       ),

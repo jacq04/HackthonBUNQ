@@ -85,13 +85,15 @@ class _PiggyPainter extends CustomPainter {
   final double ripplePhase;   // radians
   _PiggyPainter({required this.fill, required this.ripplePhase});
 
-  // ── pink piggy palette ────────────────────────────────────────────────────
+  // ── bunq-green piggy palette ──────────────────────────────────────────────
+  // Body keeps a warm pink for the "piggy" silhouette read; liquid is the
+  // bunq Together green so contributions feel like bunq-money rising.
   static const _bodyTop = Color(0xFFF7B7B0);
   static const _bodyMid = Color(0xFFEC8E84);
   static const _bodyDeep = Color(0xFFC85A4F);
-  static const _liquidTop = Color(0xFFE9663C);
-  static const _liquidBottom = Color(0xFFD84823);
-  static const _coinSlot = Color(0xFF3A2A2A);
+  static const _liquidTop = Color(0xFF1AC97F);
+  static const _liquidBottom = Color(0xFF0B8056);
+  static const _coinSlot = Color(0xFF0E1A14);
 
   @override
   void paint(Canvas canvas, Size size) {
