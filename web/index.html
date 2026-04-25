@@ -787,6 +787,53 @@
 
   </main>
 
+  <!-- ======================= VOICE TOUR ======================= -->
+  <button id="voiceBtn" class="voice-btn" aria-label="Talk to Kitty">
+    <span class="voice-btn__pulse" aria-hidden="true"></span>
+    <svg class="voice-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" fill="currentColor"/>
+      <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2h-3v-2.08A7 7 0 0 0 19 11z" fill="currentColor"/>
+    </svg>
+    <span class="voice-btn__label">talk to kitty</span>
+  </button>
+
+  <div id="voiceModal" class="voice-modal" role="dialog" aria-modal="true" aria-labelledby="voiceTitle" data-state="idle">
+    <div class="voice-modal__backdrop"></div>
+    <div class="voice-modal__panel">
+      <header class="voice-modal__head">
+        <div class="voice-modal__title">
+          <span class="voice-eyebrow">live · webrtc · openai realtime</span>
+          <h3 id="voiceTitle">kitty's voice tour</h3>
+        </div>
+        <button id="voiceClose" class="voice-icon-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </header>
+
+      <div class="voice-modal__body">
+        <div class="voice-orb-wrap">
+          <div id="voiceOrb" class="voice-orb" aria-hidden="true">
+            <span class="voice-orb__ring voice-orb__ring--1"></span>
+            <span class="voice-orb__ring voice-orb__ring--2"></span>
+            <span class="voice-orb__ring voice-orb__ring--3"></span>
+            <span class="voice-orb__core"></span>
+          </div>
+          <div id="voiceState" class="voice-state">ready</div>
+          <div class="voice-hint">
+            ask <i>"how does a circle work?"</i> · <i>"show me the agents"</i> · <i>"open the app"</i>
+          </div>
+        </div>
+        <div id="voiceTranscript" class="voice-transcript" aria-live="polite"></div>
+      </div>
+
+      <footer class="voice-modal__foot">
+        <button id="voiceMute" class="voice-action voice-action--ghost" data-muted="0">mute</button>
+        <button id="voiceHang" class="voice-action voice-action--end">end call</button>
+      </footer>
+    </div>
+  </div>
+
   <script src="./script.js"></script>
+  <script src="./voice.js"></script>
 </body>
 </html>
