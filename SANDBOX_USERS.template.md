@@ -12,14 +12,19 @@ Each authenticated user's session is cached at `~/.kitty/bunq-contexts/<label>.j
 
 ## Users
 
-| label   | email                | api_key                                  | user_id | primary_iban        | notes                               |
-|---------|----------------------|------------------------------------------|---------|---------------------|-------------------------------------|
-| asha    | asha@kitty.demo      |                                          |         |                     | group founder, Lagos Crew           |
-| malik   | malik@kitty.demo     |                                          |         |                     | member — triggers live dispute demo |
-| priya   | priya@kitty.demo     |                                          |         |                     | member — triggers emergency exit    |
-| tunde   | tunde@kitty.demo     |                                          |         |                     | late payer — Collector escalates    |
-| fatou   | fatou@kitty.demo     |                                          |         |                     | recipient of cycle 3 payout         |
-| raj     | raj@kitty.demo       |                                          |         |                     | observer / 2nd device on stage      |
+Bootstrap populates `api_key`, `user_id`, `primary_iban`, and the bunq
+`phone` number (each sandbox user is assigned a `+31…` number). The phone
+number is what you type on the Kitty sign-in screen — any format works
+(`+31 6 1805 3181`, `0618053181`, etc. — the backend normalizes).
+
+| label   | email                | api_key | user_id | primary_iban | phone | notes                               |
+|---------|----------------------|---------|---------|--------------|-------|-------------------------------------|
+| asha    | asha@kitty.demo      |         |         |              |       | group founder, Lagos Crew           |
+| malik   | malik@kitty.demo     |         |         |              |       | member — triggers live dispute demo |
+| priya   | priya@kitty.demo     |         |         |              |       | member — triggers emergency exit    |
+| tunde   | tunde@kitty.demo     |         |         |              |       | late payer — Collector escalates    |
+| fatou   | fatou@kitty.demo     |         |         |              |       | recipient of cycle 3 payout         |
+| raj     | raj@kitty.demo       |         |         |              |       | observer / 2nd device on stage      |
 
 ## Sandbox test funds
 
