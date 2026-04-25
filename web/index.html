@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Kitty — the savings circle, finally trustworthy</title>
+  <title>pod. — the savings circle, finally trustworthy</title>
   <meta name="description" content="A ROSCA savings-pot, reimagined. bunq moves the euros. TigerBeetle keeps the math perfect. Claude keeps the humans coordinated. You keep the pot." />
-  <meta name="theme-color" content="#F2ECE0" />
+  <meta name="theme-color" content="#0A0A0A" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,16 +20,16 @@
   <header class="nav">
     <a class="wordmark" href="#top">
       <svg class="wordmark-mark" viewBox="0 0 48 48" aria-hidden="true">
-        <ellipse cx="24" cy="40" rx="14" ry="2" fill="#14121022"/>
-        <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#C9A976" stroke="#6F5A3C" stroke-width="1"/>
+        <ellipse cx="24" cy="40" rx="14" ry="2" fill="#FFFFFF18"/>
+        <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#1F1F1F" stroke="#FF7A1A" stroke-width="1.2"/>
         <clipPath id="m-clip"><path d="M 10 18 L 10 19 C 10 32 15 39 24 39 C 33 39 38 32 38 19 L 38 18 Z"/></clipPath>
         <g clip-path="url(#m-clip)">
-          <path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#ED4A2C"/>
-          <path d="M 6 24 Q 12 22 18 24 T 30 24 T 44 24 L 44 26 L 6 26 Z" fill="#FF6A4C"/>
+          <path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#1AC97F"/>
+          <path d="M 6 24 Q 12 22 18 24 T 30 24 T 44 24 L 44 26 L 6 26 Z" fill="#5CDFAA"/>
         </g>
-        <path d="M 8 18 Q 24 14 40 18" fill="none" stroke="#F3E6C7" stroke-width="1.2"/>
+        <path d="M 8 18 Q 24 14 40 18" fill="none" stroke="#FF9A4A" stroke-width="1.4"/>
       </svg>
-      <span class="wordmark-type">kitty</span>
+      <span class="wordmark-type">pod.</span>
       <span class="wordmark-sub">· est. bunq hackathon 7.0</span>
     </a>
 
@@ -100,23 +100,23 @@
             <span class="pot-label__bot">⌁ live · 5 of 6 posted</span>
           </div>
 
-          <svg class="pot-svg" viewBox="0 0 400 460" role="img" aria-label="Animated pot filling with coral liquid">
+          <svg class="pot-svg" viewBox="0 0 400 460" role="img" aria-label="Animated pot filling with bunq-green liquid">
             <defs>
               <clipPath id="bowl-clip">
                 <path d="M 80 174 L 80 188 C 80 384 122 420 200 420 C 278 420 320 384 320 188 L 320 174 Z"/>
               </clipPath>
               <linearGradient id="liq" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#FF7B5C"/>
-                <stop offset=".55" stop-color="#ED4A2C"/>
-                <stop offset="1" stop-color="#9D2B10"/>
+                <stop offset="0" stop-color="#5CDFAA"/>
+                <stop offset=".55" stop-color="#1AC97F"/>
+                <stop offset="1" stop-color="#0B8056"/>
               </linearGradient>
               <linearGradient id="bowl-out" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#EBDAB9"/>
-                <stop offset="1" stop-color="#A88758"/>
+                <stop offset="0" stop-color="#F4F4F4"/>
+                <stop offset="1" stop-color="#8C8C8C"/>
               </linearGradient>
               <radialGradient id="bowl-shine" cx=".25" cy=".15" r=".8">
-                <stop offset="0" stop-color="#FFF7E2" stop-opacity=".7"/>
-                <stop offset="1" stop-color="#FFF7E2" stop-opacity="0"/>
+                <stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/>
+                <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
               </radialGradient>
             </defs>
 
@@ -124,18 +124,18 @@
             <ellipse cx="200" cy="432" rx="122" ry="7" fill="#000" opacity=".2"/>
 
             <!-- bowl body -->
-            <path class="bowl-body" d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172 Q 200 140 60 172 Z" fill="url(#bowl-out)" stroke="#7A5B36" stroke-width="1.25"/>
+            <path class="bowl-body" d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172 Q 200 140 60 172 Z" fill="url(#bowl-out)" stroke="#FF7A1A" stroke-width="1.5"/>
             <path d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172" fill="url(#bowl-shine)"/>
 
             <!-- inside shadow (at the opening) -->
-            <path d="M 78 178 Q 200 162 322 178 L 322 198 Q 200 214 78 198 Z" fill="#7A5B36" opacity=".38"/>
+            <path d="M 78 178 Q 200 162 322 178 L 322 198 Q 200 214 78 198 Z" fill="#0A0A0A" opacity=".55"/>
 
             <!-- liquid -->
             <g clip-path="url(#bowl-clip)">
               <g class="liquid-group">
                 <path class="liquid-path" d="M 0 0 L 400 0 L 400 520 L 0 520 Z" fill="url(#liq)"/>
-                <path class="liquid-front" d="M 0 10 L 400 10 L 400 520 L 0 520 Z" fill="#FF6A4A" opacity=".7"/>
-                <ellipse class="liquid-hi" cx="160" cy="18" rx="78" ry="6" fill="#FFD7C8" opacity=".55"/>
+                <path class="liquid-front" d="M 0 10 L 400 10 L 400 520 L 0 520 Z" fill="#1AC97F" opacity=".7"/>
+                <ellipse class="liquid-hi" cx="160" cy="18" rx="78" ry="6" fill="#A8F0D4" opacity=".55"/>
                 <circle class="bubble bubble--1" cx="160" cy="80" r="3.2" fill="#fff" opacity=".55"/>
                 <circle class="bubble bubble--2" cx="230" cy="140" r="2.2" fill="#fff" opacity=".45"/>
                 <circle class="bubble bubble--3" cx="260" cy="90" r="2.6" fill="#fff" opacity=".5"/>
@@ -144,16 +144,16 @@
             </g>
 
             <!-- rim -->
-            <path d="M 60 172 Q 200 140 340 172 Q 200 160 60 172 Z" fill="#F3E6C7"/>
-            <path d="M 60 172 Q 200 140 340 172" fill="none" stroke="#FFF4D6" stroke-width="1.5"/>
+            <path d="M 60 172 Q 200 140 340 172 Q 200 160 60 172 Z" fill="#F4F4F4"/>
+            <path d="M 60 172 Q 200 140 340 172" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
 
             <!-- handles -->
-            <path d="M 58 220 C 26 218 22 266 58 282" fill="none" stroke="#8B6B40" stroke-width="6" stroke-linecap="round"/>
-            <path d="M 342 220 C 374 218 378 266 342 282" fill="none" stroke="#8B6B40" stroke-width="6" stroke-linecap="round"/>
+            <path d="M 58 220 C 26 218 22 266 58 282" fill="none" stroke="#8C8C8C" stroke-width="6" stroke-linecap="round"/>
+            <path d="M 342 220 C 374 218 378 266 342 282" fill="none" stroke="#8C8C8C" stroke-width="6" stroke-linecap="round"/>
 
             <!-- bowl ornamentation -->
-            <path d="M 82 240 Q 200 250 318 240" fill="none" stroke="#7A5B36" stroke-width="1" opacity=".5"/>
-            <path d="M 88 300 Q 200 308 312 300" fill="none" stroke="#7A5B36" stroke-width="1" opacity=".35"/>
+            <path d="M 82 240 Q 200 250 318 240" fill="none" stroke="#FF7A1A" stroke-width="1" opacity=".4"/>
+            <path d="M 88 300 Q 200 308 312 300" fill="none" stroke="#FF7A1A" stroke-width="1" opacity=".25"/>
           </svg>
 
           <!-- floating deposit chips -->
@@ -361,7 +361,7 @@
           <span class="how-num">01</span>
           <div class="how-body">
             <h3>You describe who you trust, and what you're saving for.</h3>
-            <p>You don't find six people. You tell Kitty what matters: a down-payment, a wedding, school fees, a cushion. Who you'd vouch for, what you won't compromise on.</p>
+            <p>You don't find six people. You tell pod. what matters: a down-payment, a wedding, school fees, a cushion. Who you'd vouch for, what you won't compromise on.</p>
           </div>
           <span class="how-agent">— no agent yet, just you</span>
         </li>
@@ -576,7 +576,7 @@
           </h2>
           <p class="section-lede section-lede--dark">
             Postings in TigerBeetle. Events in Supabase. Audit rows for
-            every tool call every agent makes. If it happened in Kitty,
+            every tool call every agent makes. If it happened in pod.,
             it's on the tape — readable by you, your circle, and a judge.
           </p>
         </div>
@@ -694,7 +694,7 @@
 
           <div class="cta-row cta-row--big">
             <a class="btn btn--big btn--cream" href="#">
-              <span>open Kitty · iOS</span>
+              <span>open pod. · iOS</span>
               <span class="arr">↗</span>
             </a>
             <a class="btn btn--big btn--outline" href="#">
@@ -705,7 +705,7 @@
 
           <p class="cta-fine">
             Sandbox mode · no real money · bunq hackathon 7.0 judges get a
-            fast-pass. Questions? ping <code>#help-kitty</code>.
+            fast-pass. Questions? ping <code>#help-pod</code>.
           </p>
         </div>
 
@@ -722,7 +722,7 @@
                 · bunq · tigerbeetle · claude · bunq · tigerbeetle · claude · bunq · tigerbeetle · claude
               </textPath>
             </text>
-            <text x="90" y="78" text-anchor="middle" font-family="Fraunces" font-size="18" font-style="italic" fill="currentColor">kitty</text>
+            <text x="90" y="78" text-anchor="middle" font-family="Inter" font-size="22" font-weight="900" fill="currentColor">pod.</text>
             <text x="90" y="98" text-anchor="middle" font-family="JetBrains Mono" font-size="7" letter-spacing="2" fill="currentColor">NO. 01</text>
             <text x="90" y="112" text-anchor="middle" font-family="JetBrains Mono" font-size="7" letter-spacing="2" fill="currentColor">CHARTER</text>
           </svg>
@@ -737,12 +737,12 @@
         <div class="foot-col foot-col--brand">
           <div class="wordmark">
             <svg class="wordmark-mark" viewBox="0 0 48 48" aria-hidden="true">
-              <ellipse cx="24" cy="40" rx="14" ry="2" fill="#14121022"/>
-              <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#C9A976" stroke="#6F5A3C" stroke-width="1"/>
+              <ellipse cx="24" cy="40" rx="14" ry="2" fill="#FFFFFF18"/>
+              <path d="M 8 18 C 8 34 14 40 24 40 C 34 40 40 34 40 18 Q 24 12 8 18 Z" fill="#1F1F1F" stroke="#FF7A1A" stroke-width="1.2"/>
               <clipPath id="m-clip-foot"><path d="M 10 18 L 10 19 C 10 32 15 39 24 39 C 33 39 38 32 38 19 L 38 18 Z"/></clipPath>
-              <g clip-path="url(#m-clip-foot)"><path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#ED4A2C"/></g>
+              <g clip-path="url(#m-clip-foot)"><path d="M 6 24 L 44 24 L 44 40 L 6 40 Z" fill="#1AC97F"/></g>
             </svg>
-            <span class="wordmark-type">kitty</span>
+            <span class="wordmark-type">pod.</span>
           </div>
           <p class="foot-tag">
             bunq = the bank.<br>
@@ -779,7 +779,7 @@
       <div class="foot-rule"></div>
 
       <div class="foot-bot">
-        <span>© 2026 · Kitty · built for bunq hackathon 7.0</span>
+        <span>© 2026 · pod. · built for bunq hackathon 7.0</span>
         <span class="foot-bot__mid">agents propose · humans approve · with their face</span>
         <span>vol. 1 · iss. 01</span>
       </div>

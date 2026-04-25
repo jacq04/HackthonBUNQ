@@ -176,7 +176,7 @@ class _AdminPageState extends State<AdminPage>
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     return Scaffold(
-      backgroundColor: KittyColors.cream,
+      backgroundColor: KittyColors.creamDark,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
