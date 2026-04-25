@@ -132,25 +132,27 @@ u {
 }
 
 .wordmark {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
   color: var(--ink);
+  text-decoration: none;
 }
-.wordmark-mark {
-  width: 26px;
-  height: 26px;
-  transform: translateY(5px);
+/* New asset wordmark — shipped from mobile/assets, matches the rebrand.
+   The SVG is 1536×1024 (3:2). At ~44px tall it reads cleanly at desktop
+   density. Footer can run a bit larger for breathing room. */
+.wordmark-img {
+  height: 44px;
+  width: auto;
+  display: block;
+  user-select: none;
 }
-.wordmark-type {
-  /* Mobile rebrand uses heavy lowercase Inter "pod." in bunq orange — match
-     here so the mark reads consistent across surfaces. */
-  font-family: var(--f-body);
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: -0.06em;
-  line-height: 1;
-  color: var(--coral);
+.wordmark-img--foot {
+  height: 56px;
+}
+@media (max-width: 640px) {
+  .wordmark-img { height: 36px; }
+  .wordmark-img--foot { height: 48px; }
 }
 .wordmark-sub {
   font-family: var(--f-mono);
@@ -158,6 +160,7 @@ u {
   letter-spacing: 0.08em;
   color: var(--ink-3);
   text-transform: uppercase;
+  align-self: center;
 }
 
 .nav-links {
