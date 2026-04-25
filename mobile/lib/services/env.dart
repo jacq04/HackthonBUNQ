@@ -19,4 +19,14 @@ class Env {
     'SUPABASE_ANON_KEY',
     defaultValue: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH',
   );
+
+  /// Base URL for the voice-tour endpoints. Defaults to the deployed
+  /// Cloudflare Pages project. The website uses these too:
+  ///   - POST  `$voiceBaseUrl/api/voice-token`  → `{ model, instructions, proxy }`
+  ///   - WS    `wss://host$proxy`               → Gemini Live WebSocket proxy
+  /// The long-lived GEMINI_API_KEY stays server-side; the app never sees it.
+  static const String voiceBaseUrl = String.fromEnvironment(
+    'VOICE_BASE_URL',
+    defaultValue: 'https://pod-chit-together.pages.dev',
+  );
 }
