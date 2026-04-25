@@ -27,6 +27,14 @@ from app.agents.tools import audit, emit_event
 from app.auth import CurrentUserId
 from app.bunq import get_bunq_client
 from app.db import get_supabase
+from app.ledger.tb_client import (
+    AccountCode,
+    TransferCode,
+    account_id_for,
+    create_group_accounts,
+    create_member_accounts,
+)
+from app.ledger.tb_two_phase import TransferLeg, linked_batch
 from app.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -182,12 +190,69 @@ async def respond(
         diff={"mandate_id": mandate_row_id, "debit_day": debit_day, "monthly_cap_cents": monthly_cap},
     )
 
-    # Did we just cross the chartered threshold?
+    # ── First debit on accept ─────────────────────────────────────────────
+    # The real-world mandate pulls on debit_day, but in the sandbox we fire
+    # the first contribution immediately so the user sees their pot-share
+    # land. Gateway mirrors what bunq will pull; pool accumulates it.
+    contribution_cents = int(group_row["contribution_amount_cents"])
+    try:
+        linked_batch(
+            [
+                TransferLeg(
+                    int(group_row["tb_gateway_account_id"]),
+                    int(group_row["tb_pool_account_id"]),
+                    contribution_cents,
+                    TransferCode.CONTRIBUTION,
+                ),
+                TransferLeg(
+                    int(group_row["tb_gateway_account_id"]),
+                    # member_contrib account is the per-(group, member) tracker.
+                    account_id_for(
+                        group_id, AccountCode.MEMBER_CONTRIB, user_id
+                    ),
+                    contribution_cents,
+                    TransferCode.CONTRIBUTION,
+                ),
+            ],
+            group_id=group_id,
+            cycle_month=1,
+        )
+        await emit_event(
+            group_id,
+            type="contribution.posted",
+            payload={
+                "user_id": str(user_id),
+                "amount_cents": contribution_cents,
+                "cycle_month": 1,
+                "reason": "first debit on accept",
+            },
+        )
+    except Exception as e:  # noqa: BLE001
+        log.error("invites.first_debit_failed", error=str(e))
+
+    # Did we just cross the chartered threshold? If so, auto-start — no
+    # separate platform tick needed for the happy path.
     counts = _counts(sb, group_id)
     new_group_status = group_row["status"]
     if counts["accepted"] >= int(group_row["cycle_count"]):
-        _transition_to_chartered(sb, group_id, group_row["cycle_count"])
+        _transition_to_chartered(sb, group_id, int(group_row["cycle_count"]))
         new_group_status = "chartered"
+        # Auto-start: chartered → active + seed cycles.
+        try:
+            from app.routes.circle_lifecycle import StartBody, start_circle
+
+            # Call the same handler used by POST /groups/{id}/start so the
+            # behavior stays in one place. Use an admin user_id; the service
+            # role + RLS mean we're fine.
+            await start_circle(group_id, StartBody(), user_id)
+            new_group_status = "active"
+            await emit_event(
+                group_id,
+                type="group.auto_started",
+                payload={"by": "accept-threshold"},
+            )
+        except Exception as e:  # noqa: BLE001
+            log.error("invites.autostart_failed", error=str(e))
 
     return RespondResponse(
         decision="accept",

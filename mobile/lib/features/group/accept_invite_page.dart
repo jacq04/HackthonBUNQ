@@ -51,11 +51,13 @@ class _AcceptInvitePageState extends State<AcceptInvitePage> {
         debitDay: _debitDay,
       );
       if (!mounted) return;
-      _showToast(
-        '${r.acceptedCount}/${r.targetCount} accepted — '
-        '${r.groupStatus == "chartered" ? "circle chartered!" : "waiting on others"}',
-      );
-      context.pop();
+      final tail = switch (r.groupStatus) {
+        'active' => 'circle started — first debit posted',
+        'chartered' => 'circle chartered!',
+        _ => 'waiting on others',
+      };
+      _showToast('${r.acceptedCount}/${r.targetCount} accepted — $tail');
+      context.pop(true);
     } catch (e) {
       if (mounted) _showToast('could not accept: $e');
     } finally {

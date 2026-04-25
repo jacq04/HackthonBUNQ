@@ -734,7 +734,44 @@ async def cmd_accept(args: argparse.Namespace) -> None:
     )
     ok(f"{args.label} accepted (mandate {mandate_id[:8]}…, debit day={args.debit_day})")
 
-    # If we just hit the cycle_count threshold, flip the group.
+    # First debit: the bunq mandate pulls the member's cycle-1 contribution
+    # immediately, so the pot starts accumulating as each person accepts.
+    from app.ledger.tb_client import (
+        AccountCode as _AC,
+        TransferCode as _TC_acc,
+        account_id_for as _acct_for,
+    )
+    from app.ledger.tb_two_phase import TransferLeg as _TL, linked_batch as _lb
+
+    amount = int(group["contribution_amount_cents"])
+    try:
+        _lb(
+            [
+                _TL(int(group["tb_gateway_account_id"]),
+                    int(group["tb_pool_account_id"]),
+                    amount, _TC_acc.CONTRIBUTION),
+                _TL(int(group["tb_gateway_account_id"]),
+                    _acct_for(uuid.UUID(group["id"]), _AC.MEMBER_CONTRIB, uid),
+                    amount, _TC_acc.CONTRIBUTION),
+            ],
+            group_id=uuid.UUID(group["id"]),
+            cycle_month=1,
+        )
+        await _emit(
+            uuid.UUID(group["id"]),
+            type="contribution.posted",
+            payload={
+                "user_id": str(uid),
+                "amount_cents": amount,
+                "cycle_month": 1,
+                "reason": "first debit on accept",
+            },
+        )
+        ok(f"  first debit €{amount/100:,.2f} posted to pool")
+    except Exception as e:  # noqa: BLE001
+        warn(f"first debit failed: {e}")
+
+    # If we just hit the cycle_count threshold: charter → active + seed cycles.
     counts = sb.table("members").select("status").eq(
         "group_id", group["id"]
     ).execute().data or []
@@ -743,11 +780,12 @@ async def cmd_accept(args: argparse.Namespace) -> None:
         sb.table("groups").update({"status": "chartered"}).eq(
             "id", group["id"]
         ).execute()
-        # Retire buffer (still-invited members).
         sb.table("members").update({"status": "exited_clean"}).eq(
             "group_id", group["id"]
         ).eq("status", "invited").execute()
-        ok(f"group → chartered (buffer retired)")
+        ok("group → chartered (buffer retired)")
+        # Auto-start: the happy path shouldn't require a separate operator call.
+        await cmd_start(argparse.Namespace())
 
 
 async def cmd_accept_all(args: argparse.Namespace) -> None:

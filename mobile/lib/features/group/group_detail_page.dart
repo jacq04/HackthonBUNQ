@@ -16,18 +16,62 @@ class GroupDetailPage extends StatefulWidget {
   State<GroupDetailPage> createState() => _GroupDetailPageState();
 }
 
-class _GroupDetailPageState extends State<GroupDetailPage> {
+class _GroupDetailPageState extends State<GroupDetailPage> with WidgetsBindingObserver {
   Map<String, dynamic>? _group;
   List<dynamic>? _members;
   List<Map<String, dynamic>> _events = [];
   RealtimeChannel? _channel;
+  RealtimeChannel? _groupChannel;
+  RealtimeChannel? _membersChannel;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
     _subscribe();
+    _subscribeGroupAndMembers();
     _fetchEvents();
+  }
+
+  /// Refresh when the app window comes back to foreground (e.g. after the
+  /// user accepted their invite and popped back).
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
+  }
+
+  /// Realtime push for group.status changes + member accepts so the lifecycle
+  /// banner reflects progress without a manual refresh.
+  void _subscribeGroupAndMembers() {
+    _groupChannel = supabase
+        .channel('group:${widget.groupId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'groups',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: widget.groupId,
+          ),
+          callback: (_) => _load(),
+        )
+        .subscribe();
+    _membersChannel = supabase
+        .channel('members:${widget.groupId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'members',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'group_id',
+            value: widget.groupId,
+          ),
+          callback: (_) => _load(),
+        )
+        .subscribe();
   }
 
   Future<void> _load() async {
@@ -95,7 +139,10 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     if (_channel != null) supabase.removeChannel(_channel!);
+    if (_groupChannel != null) supabase.removeChannel(_groupChannel!);
+    if (_membersChannel != null) supabase.removeChannel(_membersChannel!);
     super.dispose();
   }
 
@@ -259,8 +306,19 @@ class _LifecycleBanner extends StatelessWidget {
                 label: 'review',
                 color: KittyColors.cream,
                 foreground: KittyColors.bowl,
-                onPressed: () =>
-                    context.push('/group/${group['id']}/accept'),
+                onPressed: () async {
+                  // Accept page pops with `true` on success. Capture the
+                  // ancestor state BEFORE the await so we don't reach for
+                  // context after a possible widget teardown.
+                  final state = context
+                      .findAncestorStateOfType<_GroupDetailPageState>();
+                  final r =
+                      await context.push('/group/${group['id']}/accept');
+                  if (r == true) {
+                    state?._load();
+                    state?._fetchEvents();
+                  }
+                },
               ),
             ],
           ),
