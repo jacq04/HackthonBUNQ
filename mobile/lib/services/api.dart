@@ -53,6 +53,11 @@ class KittyApi {
     return (email: r['email'] as String, otp: r['otp'] as String);
   }
 
+  Future<({String email, String otp})> signInByPhone(String phone) async {
+    final r = await _post('/auth/bunq/by-phone', {'phone': phone});
+    return (email: r['email'] as String, otp: r['otp'] as String);
+  }
+
   // ─── Groups ──────────────────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> listGroups() => _getList('/groups');
   Future<Map<String, dynamic>> getGroup(String id) => _get('/groups/$id');
@@ -144,6 +149,7 @@ class BunqUserCard {
   final String displayName;
   final int? bunqUserId;
   final String? primaryIban;
+  final String? phone;
   final String? cultureHint;
 
   const BunqUserCard({
@@ -151,6 +157,7 @@ class BunqUserCard {
     required this.displayName,
     this.bunqUserId,
     this.primaryIban,
+    this.phone,
     this.cultureHint,
   });
 
@@ -159,6 +166,7 @@ class BunqUserCard {
         displayName: j['display_name'] as String,
         bunqUserId: j['bunq_user_id'] as int?,
         primaryIban: j['primary_iban'] as String?,
+        phone: j['phone'] as String?,
         cultureHint: j['culture_hint'] as String?,
       );
 }

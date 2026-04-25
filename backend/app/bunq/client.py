@@ -222,6 +222,21 @@ class BunqClient:
     # -------------------------------------------------------------------------
     # Public API — the subset the backend needs.
     # -------------------------------------------------------------------------
+    async def get_user_profile(self) -> dict[str, Any]:
+        """Fetch the UserPerson (or UserCompany/UserApiKey) object — includes
+        display_name, public_nick_name, and alias entries (PHONE_NUMBER + EMAIL).
+        """
+        await self.ensure_session()
+        resp = await self._http.get(
+            f"/user/{self._user_id}", headers=self._auth_headers()
+        )
+        resp.raise_for_status()
+        for item in resp.json()["Response"]:
+            for key in ("UserPerson", "UserCompany", "UserApiKey"):
+                if key in item:
+                    return item[key]
+        return {}
+
     async def list_monetary_accounts(self) -> list[dict[str, Any]]:
         await self.ensure_session()
         resp = await self._http.get(

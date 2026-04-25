@@ -45,6 +45,7 @@ class BunqUserCard(BaseModel):
     display_name: str
     bunq_user_id: int | None = None
     primary_iban: str | None = None
+    phone: str | None = None
     culture_hint: str | None = None
 
 
@@ -62,16 +63,24 @@ class BunqSigninResponse(BaseModel):
 # Helpers
 # -----------------------------------------------------------------------------
 async def _bunq_profile(label: str) -> dict[str, Any]:
-    """Pull the authoritative display_name from the bunq UserPerson object.
-
-    Falls back to the IBAN alias's name, then to the label (worst case).
-    The IBAN field is always taken from the primary ACTIVE account.
+    """Pull display_name (prefer UserPerson.display_name), the primary IBAN,
+    and the first PHONE_NUMBER alias from bunq.
     """
     client = get_bunq_client(label)
     await client.ensure_session()
 
     display_name: str | None = None
     primary_iban: str | None = None
+    phone: str | None = None
+
+    try:
+        profile = await client.get_user_profile()
+        display_name = profile.get("display_name") or profile.get("public_nick_name")
+        for alias in profile.get("alias") or []:
+            if alias.get("type") == "PHONE_NUMBER" and not phone:
+                phone = alias.get("value")
+    except Exception as e:  # noqa: BLE001
+        log.warning("auth.bunq.user_profile.failed", label=label, error=str(e))
 
     try:
         accounts = await client.list_monetary_accounts()
@@ -87,7 +96,6 @@ async def _bunq_profile(label: str) -> dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         log.warning("auth.bunq.profile.failed", label=label, error=str(e))
 
-    # If we still don't have a name, fall back to label.
     if not display_name:
         display_name = label.capitalize()
 
@@ -95,6 +103,7 @@ async def _bunq_profile(label: str) -> dict[str, Any]:
         "bunq_user_id": client.user_id,
         "display_name": display_name,
         "primary_iban": primary_iban,
+        "phone": phone,
     }
 
 
@@ -119,11 +128,61 @@ async def list_bunq_users() -> list[BunqUserCard]:
                     display_name=profile["display_name"],
                     bunq_user_id=profile["bunq_user_id"],
                     primary_iban=profile["primary_iban"],
+                    phone=profile.get("phone"),
                 )
             )
         except Exception as e:  # noqa: BLE001
             log.warning("auth.bunq.list.skip", label=label, error=str(e))
     return cards
+
+
+class PhoneSigninRequest(BaseModel):
+    phone: str
+
+
+@router.post("/by-phone", response_model=BunqSigninResponse)
+async def signin_by_phone(body: PhoneSigninRequest) -> BunqSigninResponse:
+    """Login by bunq phone number. Looks up the cached sandbox user whose
+    PHONE_NUMBER alias matches, then runs the regular accept+OTP flow."""
+    target = _normalize_phone(body.phone)
+    if not target:
+        raise HTTPException(status_code=400, detail="invalid phone number")
+
+    ctx_dir = Path(os.path.expanduser(settings.bunq_context_dir))
+    if not ctx_dir.exists():
+        raise HTTPException(status_code=404, detail="no bunq users provisioned")
+
+    matched_label: str | None = None
+    for ctx_file in sorted(ctx_dir.glob("*.json")):
+        label = ctx_file.stem
+        try:
+            profile = await _bunq_profile(label)
+            if _normalize_phone(profile.get("phone") or "") == target:
+                matched_label = label
+                break
+        except Exception as e:  # noqa: BLE001
+            log.warning("auth.bunq.phone.lookup_failed", label=label, error=str(e))
+
+    if not matched_label:
+        raise HTTPException(
+            status_code=404,
+            detail="no bunq user with that phone number is provisioned on this host",
+        )
+
+    return await signin_with_bunq(BunqSigninRequest(label=matched_label))
+
+
+def _normalize_phone(raw: str) -> str:
+    """Keep only digits; drop a leading 00 (some sandbox users store the intl
+    prefix that way). Allows comparisons to work whether the client sent
+    '+31618053181', '0031618053181', '06 18053181', or '+31 6 1805 3181'."""
+    digits = "".join(ch for ch in (raw or "") if ch.isdigit())
+    if digits.startswith("00"):
+        digits = digits[2:]
+    # Local NL format — strip the leading 0 and prefix with 31 so both formats collide.
+    if digits.startswith("0") and len(digits) in (10, 11):
+        digits = "31" + digits[1:]
+    return digits
 
 
 @router.post("", response_model=BunqSigninResponse)

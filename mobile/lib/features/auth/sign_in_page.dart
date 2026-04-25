@@ -7,10 +7,12 @@ import '../../core/widgets/coral_button.dart';
 import '../../services/api.dart';
 import '../../services/supabase.dart';
 
-/// Two-step sign-in:
-///   1. method picker  ·  "sign in with bunq" (primary)  ·  "email me a code"
-///   2. bunq picker    ·  list of sandbox identities w/ real name + IBAN
-enum _Stage { method, bunqPick, emailEntry, emailCode }
+/// Sign-in stages:
+///   method        — pick phone / bunq-picker / email
+///   phoneEntry    — type your bunq phone number (primary path)
+///   bunqPick      — pick a sandbox identity (demo fallback)
+///   emailEntry    — email + code (final fallback)
+enum _Stage { method, phoneEntry, bunqPick, emailEntry, emailCode }
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -20,17 +22,42 @@ class SignInPage extends StatefulWidget {
 }
 
 class _SignInPageState extends State<SignInPage> {
-  _Stage _stage = _Stage.method;
+  _Stage _stage = _Stage.phoneEntry;
   List<BunqUserCard>? _candidates;
   bool _busy = false;
+  final _phone = TextEditingController();
   final _email = TextEditingController();
   final _code = TextEditingController();
 
   @override
   void dispose() {
+    _phone.dispose();
     _email.dispose();
     _code.dispose();
     super.dispose();
+  }
+
+  Future<void> _signInByPhone() async {
+    final digits = _phone.text.trim();
+    if (digits.length < 6) {
+      _toast('that phone number looks too short');
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final session = await KittyApi().signInByPhone(digits);
+      final resp = await supabase.auth.verifyOTP(
+        email: session.email,
+        token: session.otp,
+        type: OtpType.email,
+      );
+      if (resp.session == null) throw 'no session returned';
+      if (mounted) context.go('/');
+    } catch (e) {
+      if (mounted) _toast('phone sign-in failed: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _openBunqPicker() async {
@@ -127,8 +154,18 @@ class _SignInPageState extends State<SignInPage> {
       case _Stage.method:
         return _MethodStage(
           key: const ValueKey('method'),
+          onPhone: () => setState(() => _stage = _Stage.phoneEntry),
           onBunq: _openBunqPicker,
           onEmail: () => setState(() => _stage = _Stage.emailEntry),
+        );
+      case _Stage.phoneEntry:
+        return _PhoneStage(
+          key: const ValueKey('phone'),
+          controller: _phone,
+          busy: _busy,
+          onSignIn: _signInByPhone,
+          onPickInstead: _openBunqPicker,
+          onBack: () => setState(() => _stage = _Stage.method),
         );
       case _Stage.bunqPick:
         return _BunqPickStage(
@@ -163,9 +200,15 @@ class _SignInPageState extends State<SignInPage> {
 // Stage widgets
 // ─────────────────────────────────────────────────────────────────────────
 class _MethodStage extends StatelessWidget {
+  final VoidCallback onPhone;
   final VoidCallback onBunq;
   final VoidCallback onEmail;
-  const _MethodStage({super.key, required this.onBunq, required this.onEmail});
+  const _MethodStage({
+    super.key,
+    required this.onPhone,
+    required this.onBunq,
+    required this.onEmail,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -178,24 +221,100 @@ class _MethodStage extends StatelessWidget {
           const _Hero(),
           const Spacer(),
           CoralButton(
-            label: 'sign in with bunq',
+            label: 'continue with phone',
             hero: true,
+            onPressed: onPhone,
+            leading: const Text('📞', style: TextStyle(fontSize: 18)),
+          ).animate().fadeIn(duration: 420.ms, delay: 180.ms).slideY(begin: 0.4),
+          const SizedBox(height: 12),
+          CoralButton(
+            label: 'sign in with bunq',
+            color: KittyColors.bowl,
+            foreground: KittyColors.cream,
             onPressed: onBunq,
             leading: const _BeeIcon(),
-          ).animate().fadeIn(duration: 420.ms, delay: 220.ms).slideY(begin: 0.4),
+          ).animate().fadeIn(duration: 420.ms, delay: 280.ms).slideY(begin: 0.4),
           const SizedBox(height: 12),
           CoralButton(
             label: 'email me a code',
             color: KittyColors.soft,
             foreground: KittyColors.dusk,
             onPressed: onEmail,
-          ).animate().fadeIn(duration: 420.ms, delay: 320.ms).slideY(begin: 0.4),
+          ).animate().fadeIn(duration: 420.ms, delay: 380.ms).slideY(begin: 0.4),
           const SizedBox(height: 36),
           Text(
             "Sandbox demo — bunq sign-in uses pre-minted test accounts.",
             textAlign: TextAlign.center,
             style: t.bodySmall?.copyWith(color: KittyColors.dusk.withValues(alpha: 0.5)),
-          ).animate().fadeIn(duration: 420.ms, delay: 480.ms),
+          ).animate().fadeIn(duration: 420.ms, delay: 520.ms),
+        ],
+      ),
+    );
+  }
+}
+
+class _PhoneStage extends StatelessWidget {
+  final TextEditingController controller;
+  final bool busy;
+  final VoidCallback onSignIn;
+  final VoidCallback onPickInstead;
+  final VoidCallback onBack;
+  const _PhoneStage({
+    super.key,
+    required this.controller,
+    required this.busy,
+    required this.onSignIn,
+    required this.onPickInstead,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 64, 32, 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _Hero(),
+          const SizedBox(height: 48),
+          Text('phone number',
+              style: t.labelMedium?.copyWith(color: KittyColors.dusk)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            keyboardType: TextInputType.phone,
+            autofocus: true,
+            decoration: const InputDecoration(
+              hintText: '+31 6 1805 3181',
+            ),
+            style: t.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Enter the bunq-registered number — any format works.',
+            style: t.bodySmall?.copyWith(color: KittyColors.dusk.withValues(alpha: 0.5)),
+          ),
+          const SizedBox(height: 24),
+          CoralButton(
+            label: 'continue',
+            hero: true,
+            loading: busy,
+            onPressed: busy ? null : onSignIn,
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton(
+              onPressed: busy ? null : onPickInstead,
+              child: const Text("pick from known identities"),
+            ),
+          ),
+          Center(
+            child: TextButton(
+              onPressed: busy ? null : onBack,
+              child: const Text('back'),
+            ),
+          ),
         ],
       ),
     );
