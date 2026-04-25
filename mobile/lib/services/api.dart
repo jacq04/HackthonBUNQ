@@ -75,6 +75,68 @@ class KittyApi {
     });
     return MatchResult.fromJson(r);
   }
+
+  // ─── Circle Lifecycle v2 ────────────────────────────────────────────
+  Future<RespondResult> respondToInvite(
+    String groupId, {
+    required String decision,     // 'accept' | 'decline'
+    int? debitDay,
+    int? monthlyCapCents,
+    int termsVersion = 1,
+  }) async {
+    final r = await _post('/groups/$groupId/invites/respond', {
+      'decision': decision,
+      if (debitDay != null) 'debit_day': debitDay,
+      if (monthlyCapCents != null) 'monthly_cap_cents': monthlyCapCents,
+      'terms_version': termsVersion,
+    });
+    return RespondResult.fromJson(r);
+  }
+
+  Future<Map<String, dynamic>> startCircle(String groupId) =>
+      _post('/groups/$groupId/start', {});
+
+  Future<Map<String, dynamic>> placeBid(
+    String groupId,
+    int cycleMonth, {
+    required String urgency,
+    required String reason,
+  }) =>
+      _post('/groups/$groupId/cycles/$cycleMonth/bid', {
+        'urgency': urgency,
+        'reason': reason,
+      });
+
+  Future<Map<String, dynamic>> resolveCycle(String groupId, int cycleMonth) =>
+      _post('/groups/$groupId/cycles/$cycleMonth/resolve', {});
+}
+
+class RespondResult {
+  final String decision;
+  final String memberStatus;
+  final String groupStatus;
+  final String? mandateId;
+  final String? bunqMandateId;
+  final int acceptedCount;
+  final int targetCount;
+  const RespondResult({
+    required this.decision,
+    required this.memberStatus,
+    required this.groupStatus,
+    this.mandateId,
+    this.bunqMandateId,
+    required this.acceptedCount,
+    required this.targetCount,
+  });
+  factory RespondResult.fromJson(Map<String, dynamic> j) => RespondResult(
+        decision: j['decision'] as String,
+        memberStatus: j['member_status'] as String,
+        groupStatus: j['group_status'] as String,
+        mandateId: j['mandate_id'] as String?,
+        bunqMandateId: j['bunq_mandate_id'] as String?,
+        acceptedCount: j['accepted_count'] as int,
+        targetCount: j['target_count'] as int,
+      );
 }
 
 class BunqUserCard {

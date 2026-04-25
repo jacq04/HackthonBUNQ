@@ -51,6 +51,26 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     if (mounted) setState(() => _events = List<Map<String, dynamic>>.from(rows));
   }
 
+  /// Navigate to the bid screen for the latest open cycle in this group.
+  /// Silently falls back to the group detail if no cycle is open.
+  Future<void> _gotoBid() async {
+    final cycles = await supabase
+        .from('cycles')
+        .select('cycle_month,status')
+        .eq('group_id', widget.groupId)
+        .inFilter('status', ['contribution_window', 'bid_window'])
+        .order('cycle_month')
+        .limit(1);
+    if (!mounted || (cycles as List).isEmpty) return;
+    final m = (cycles as List).first as Map;
+    final pot = ((_group?['contribution_amount_cents'] ?? 0) as int) *
+        ((_group?['cycle_count'] ?? 0) as int);
+    if (!mounted) return;
+    context.push(
+      '/group/${widget.groupId}/cycle/${m['cycle_month']}/bid?pot=$pot',
+    );
+  }
+
   void _subscribe() {
     _channel = supabase
         .channel('events:${widget.groupId}')
@@ -97,6 +117,7 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 120),
                 children: [
+                  if (g != null) _LifecycleBanner(group: g, members: _members ?? const []),
                   const SizedBox(height: 16),
                   Center(
                     child: Hero(
@@ -136,10 +157,15 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
                   children: [
                     Expanded(
                       child: CoralButton(
-                        label: 'contribute',
+                        label: (_group?['status'] == 'active') ? 'place bid' : 'contribute',
                         hero: true,
-                        onPressed: () {/* TODO */},
-                        leading: const Text('💳', style: TextStyle(fontSize: 16)),
+                        onPressed: _group?['status'] == 'active'
+                            ? () => _gotoBid()
+                            : () {/* TODO contribute */},
+                        leading: Text(
+                          _group?['status'] == 'active' ? '🎯' : '💳',
+                          style: const TextStyle(fontSize: 16),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -164,6 +190,114 @@ class _GroupDetailPageState extends State<GroupDetailPage> {
     );
   }
 }
+
+/// Adapts the call-to-action based on the circle's current lifecycle state.
+/// For `awaiting_accepts` AND the current user is still `invited`, shows an
+/// accept banner that routes to /accept. For active circles, shows a compact
+/// status chip with the state.
+class _LifecycleBanner extends StatelessWidget {
+  final Map<String, dynamic> group;
+  final List<dynamic> members;
+  const _LifecycleBanner({required this.group, required this.members});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final status = group['status'] as String? ?? '';
+    final myId = supabase.auth.currentUser?.id;
+    final me = members.cast<Map<String, dynamic>>().firstWhere(
+          (m) => m['user_id'] == myId,
+          orElse: () => <String, dynamic>{},
+        );
+    final myStatus = me['status'] as String?;
+    final accepted =
+        members.where((m) => m['status'] == 'accepted').length;
+    final target = group['cycle_count'] as int? ?? 0;
+
+    if (status == 'awaiting_accepts' && myStatus == 'invited') {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                KittyColors.coral.withValues(alpha: 0.9),
+                KittyColors.ember.withValues(alpha: 0.85),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: const BorderRadius.all(KittyRadius.xl),
+            boxShadow: KittyShadows.lift,
+          ),
+          child: Row(
+            children: [
+              const Text('✉️', style: TextStyle(fontSize: 32)),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "you're invited",
+                      style: t.titleMedium?.copyWith(
+                        color: KittyColors.cream,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$accepted of $target accepted so far',
+                      style: t.bodySmall?.copyWith(
+                        color: KittyColors.cream.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              CoralButton(
+                label: 'review',
+                color: KittyColors.cream,
+                foreground: KittyColors.bowl,
+                onPressed: () =>
+                    context.push('/group/${group['id']}/accept'),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 420.ms).slideY(begin: 0.1),
+      );
+    }
+
+    if (status == 'awaiting_accepts') {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+        child: Text(
+          'awaiting accepts — $accepted of $target in',
+          style: t.bodySmall?.copyWith(
+            color: KittyColors.dusk.withValues(alpha: 0.6),
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    if (status == 'chartered') {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+        child: Text(
+          'chartered — waiting for platform to start the first cycle',
+          style: t.bodySmall?.copyWith(
+            color: KittyColors.dusk.withValues(alpha: 0.6),
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
 
 class _Header extends StatelessWidget {
   final Map<String, dynamic>? group;

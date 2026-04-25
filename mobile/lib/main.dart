@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme/theme.dart';
 import 'features/auth/sign_in_page.dart';
+import 'features/cycle/place_bid_page.dart';
+import 'features/group/accept_invite_page.dart';
 import 'features/group/group_detail_page.dart';
 import 'features/home/home_page.dart';
 import 'features/matchmaker/find_circle_page.dart';
@@ -52,6 +54,20 @@ class _KittyAppState extends State<KittyApp> {
         GoRoute(
           path: '/group/:id',
           builder: (_, s) => GroupDetailPage(groupId: s.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/group/:id/accept',
+          builder: (_, s) =>
+              AcceptInvitePage(groupId: s.pathParameters['id']!),
+        ),
+        GoRoute(
+          path: '/group/:id/cycle/:cycle/bid',
+          builder: (_, s) => PlaceBidPage(
+            groupId: s.pathParameters['id']!,
+            cycleMonth: int.parse(s.pathParameters['cycle']!),
+            potCents:
+                int.tryParse(s.uri.queryParameters['pot'] ?? '0') ?? 0,
+          ),
         ),
       ],
     );
