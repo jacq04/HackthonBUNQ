@@ -1,41 +1,23 @@
 # Fly.io deployment for TigerBeetle as a private sidecar.
-#
 # Reachable from the FastAPI app at  pod-tb.internal:3000
 # (Fly's internal 6PN DNS — never exposed to the public internet).
 #
-# Deploy with:
-#   fly launch --copy-config --config deploy/tigerbeetle.fly.toml --no-deploy
-#   fly volumes create tb_data --size 1 --region ams --app pod-tb
-#   fly deploy --config deploy/tigerbeetle.fly.toml --image ghcr.io/tigerbeetle/tigerbeetle:0.16.30
+# We don't declare a [[services]] block: any port the VM binds on 0.0.0.0
+# is reachable from other apps in the same org via the private 6PN network
+# without going through Fly's edge proxy. That keeps TB unreachable from
+# the public internet by construction.
 
 app = "pod-tb"
 primary_region = "ams"
 
-# No [build] block — we use the upstream image directly.
+# Format the data file on first boot, then start TB.
 [experimental]
-  cmd = []
+  cmd = ["/bin/sh", "-c", "if [ ! -f /data/0_0.tigerbeetle ]; then /tigerbeetle format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle; fi; exec /tigerbeetle start --addresses=0.0.0.0:3000 --development /data/0_0.tigerbeetle"]
 
-[[mounts]]
+[mounts]
   source = "tb_data"
   destination = "/data"
-
-# TigerBeetle uses io_uring; Fly's runtime allows it. We expose only the
-# private TCP port — no [http_service], no public reachability.
-[[services]]
-  internal_port = 3000
-  protocol = "tcp"
-  auto_stop_machines = false   # ledger must stay up
-  auto_start_machines = true
-  min_machines_running = 1
-
-  # Bind to 0.0.0.0 inside the VM but only attach to 6PN (private network).
-  [[services.ports]]
-    port = 3000
-    handlers = ["tcp"]
 
 [[vm]]
   size = "shared-cpu-1x"
   memory = "512mb"
-
-[processes]
-  app = "/bin/sh -c 'if [ ! -f /data/0_0.tigerbeetle ]; then /tigerbeetle format --cluster=0 --replica=0 --replica-count=1 --development /data/0_0.tigerbeetle; fi; exec /tigerbeetle start --addresses=0.0.0.0:3000 --development /data/0_0.tigerbeetle'"
