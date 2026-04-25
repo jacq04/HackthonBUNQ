@@ -246,13 +246,30 @@ async def _form_new_circle(
     rationale: str,
     requesting_user_id: uuid.UUID,
 ) -> dict:
-    """Platform-privileged: create a circle with a founding membership."""
+    """Platform-privileged: create a circle + INVITE the founding set.
+
+    Over-recruit by 20% (min +1) so a dropout during the accept window doesn't
+    sink the circle. Members land in 'invited' state; they become 'accepted'
+    only after signing charter + mandate via /groups/{id}/invites/respond.
+    Group starts in 'recruiting' and immediately transitions to
+    'awaiting_accepts' once invites are written.
+    """
+    import math
+    from datetime import datetime, timedelta, timezone
+
+    # Ensure the requester is in the founding set, and over-recruit.
     if requesting_user_id not in founding_user_ids:
         founding_user_ids = [requesting_user_id, *founding_user_ids]
-    founding_user_ids = list(dict.fromkeys(founding_user_ids))[:cycle_count]
+    founding_user_ids = list(dict.fromkeys(founding_user_ids))
+
+    invite_buffer = max(1, math.ceil(cycle_count * 0.2))
+    target_invites = cycle_count + invite_buffer
+    founding_user_ids = founding_user_ids[:target_invites]
 
     group_id = uuid.uuid4()
     tb_ids = create_group_accounts(group_id, enforce_pool_invariant=True)
+    accept_deadline = datetime.now(timezone.utc) + timedelta(hours=48)
+
     sb.table("groups").insert(
         {
             "id": str(group_id),
@@ -265,26 +282,47 @@ async def _form_new_circle(
             "tb_pool_account_id": tb_ids["pool"],
             "tb_gateway_account_id": tb_ids["gateway"],
             "tb_penalty_account_id": tb_ids["penalty"],
-            "status": "charter",  # Constitution agent will finalize
+            # v2 state machine: circles start at recruiting, flip to awaiting_accepts
+            # after invites write, then chartered once all N accept.
+            "status": "recruiting",
+            "invite_buffer": invite_buffer,
+            "accept_deadline": accept_deadline.isoformat(),
             "created_by": str(requesting_user_id),
             "created_by_agent": "matchmaker",
         }
     ).execute()
 
-    for i, uid in enumerate(founding_user_ids):
+    for uid in founding_user_ids:
         tb = create_member_accounts(group_id, uid)
         sb.table("members").insert(
             {
                 "group_id": str(group_id),
                 "user_id": str(uid),
+                # Requester is admin; they still need to accept. Buffer members
+                # sit at payout_cycle=null until confirmed — _promote_to_active
+                # assigns slots on cycle seed.
                 "role": "admin" if uid == requesting_user_id else "member",
-                "status": "active",
-                "payout_cycle": i + 1,
+                "status": "invited",
                 "tb_contrib_account_id": tb["contrib"],
                 "tb_received_account_id": tb["received"],
             }
         ).execute()
-        sb.table("users").update({"waitlist_status": "matched"}).eq("id", str(uid)).execute()
+        sb.table("users").update({"waitlist_status": "matched"}).eq(
+            "id", str(uid)
+        ).execute()
+        await emit_event(
+            group_id,
+            type="matchmaker.invited",
+            payload={
+                "user_id": str(uid),
+                "accept_deadline": accept_deadline.isoformat(),
+            },
+        )
+
+    # Flip to awaiting_accepts now that invitations are out.
+    sb.table("groups").update({"status": "awaiting_accepts"}).eq(
+        "id", str(group_id)
+    ).execute()
 
     await emit_event(
         group_id,
@@ -292,7 +330,10 @@ async def _form_new_circle(
         payload={
             "group_id": str(group_id),
             "name": name,
-            "founding_user_ids": [str(x) for x in founding_user_ids],
+            "cycle_count": cycle_count,
+            "invite_buffer": invite_buffer,
+            "invited_user_ids": [str(x) for x in founding_user_ids],
+            "accept_deadline": accept_deadline.isoformat(),
             "rationale": rationale,
         },
     )
@@ -305,14 +346,18 @@ async def _form_new_circle(
             "name": name,
             "contribution_amount_cents": contribution_amount_cents,
             "cycle_count": cycle_count,
-            "founding_user_ids": [str(x) for x in founding_user_ids],
+            "invite_buffer": invite_buffer,
+            "invited_user_ids": [str(x) for x in founding_user_ids],
         },
     )
     return {
         "ok": True,
         "group_id": str(group_id),
         "name": name,
-        "founding_user_ids": [str(x) for x in founding_user_ids],
+        "cycle_count": cycle_count,
+        "invite_buffer": invite_buffer,
+        "invited_user_ids": [str(x) for x in founding_user_ids],
+        "accept_deadline": accept_deadline.isoformat(),
     }
 
 

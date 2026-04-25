@@ -13,11 +13,14 @@ from app.routes import (
     auth_bunq,
     charter,
     chat,
+    circle_lifecycle,
     contribute,
+    cycles,
     disputes,
     emergency,
     groups,
     health,
+    invites,
     matchmaker,
     members,
     payout,
@@ -64,6 +67,9 @@ app.include_router(auth_bunq.router)
 app.include_router(groups.router)
 app.include_router(members.router)
 app.include_router(matchmaker.router)
+app.include_router(invites.router)
+app.include_router(circle_lifecycle.router)
+app.include_router(cycles.router)
 app.include_router(charter.router)
 app.include_router(chat.router)
 app.include_router(contribute.router)

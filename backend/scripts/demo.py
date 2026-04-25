@@ -582,11 +582,486 @@ async def cmd_reset(_: argparse.Namespace) -> None:
         warn("no demo group to reset")
         return
     gid = group["id"]
-    for table in ("events", "messages", "contributions", "payouts", "charters", "disputes", "emergencies", "members"):
+    # Cycles-first so bids cascade via ON DELETE CASCADE on cycles.
+    for table in (
+        "events", "messages", "contributions", "payouts", "charters",
+        "disputes", "emergencies", "cycles", "mandates", "members",
+    ):
         sb.table(table).delete().eq("group_id", gid).execute()
     sb.table("groups").delete().eq("id", gid).execute()
     ok(f"wiped {GROUP_NAME} ({gid})")
     warn("TB accounts remain (TB has no delete). Next seed will reuse them.")
+
+
+# ────────────────────────────────────────────────────────────────────────────
+# Circle Lifecycle v2 — accept / start / bid / resolve
+# ────────────────────────────────────────────────────────────────────────────
+async def cmd_matchmake_all(_: argparse.Namespace) -> None:
+    """Stage every sandbox user on the waitlist with aligned prefs, then invoke
+    the Matchmaker once for the last label. With 6 matching candidates waiting,
+    the agent should FORM a circle with all of them (cycle_count=6)."""
+    from app.agents.matchmaker import get_matchmaker
+    from app.agents.vetting import get_vetting
+
+    sb = get_supabase()
+    # Fresh state for every run.
+    sb.table("users").update(
+        {"waitlist_status": "none", "waitlist_since": None, "trust_score": 50,
+         "trust_rationale": None, "match_preferences": {}, "goal": None},
+    ).not_.is_("bunq_label", "null").execute()
+
+    # Phase 1 — put everyone on the waitlist with identical Tanda prefs and
+    # run Vetting so each has a real trust_score. No matchmaker invocation.
+    for label in LABELS:
+        u = sb.table("users").select("id,bunq_label").eq(
+            "bunq_label", label
+        ).single().execute().data
+        uid = uuid.UUID(u["id"])
+        sb.table("users").update(
+            {
+                "match_preferences": {
+                    "contribution_amount_cents": CONTRIBUTION_CENTS,
+                    "cycle_count": CYCLE_COUNT,
+                    "urgency": "medium",
+                    "cultural_hint": "Tanda",
+                },
+                "goal": f"saving for a shared goal ({label})",
+                "waitlist_status": "waiting",
+                "waitlist_since": "now()",
+            }
+        ).eq("id", str(uid)).execute()
+        log(f"{label}: Vetting")
+        await get_vetting().run(
+            f"Score user_id={uid}. €{CONTRIBUTION_CENTS / 100:.2f}/month × {CYCLE_COUNT}.",
+            context={"user_id": uid, "bunq_label": label},
+        )
+
+    # Phase 2 — invoke Matchmaker for the LAST label. With 6 aligned members on
+    # the waitlist, a form is now unambiguously the right call.
+    last = LABELS[-1]
+    u = sb.table("users").select("id").eq("bunq_label", last).single().execute().data
+    uid = uuid.UUID(u["id"])
+    log(f"{last}: Matchmaker (all {len(LABELS)} candidates waitlisted)")
+    result = await get_matchmaker().run(
+        f"user_id={uid}. €{CONTRIBUTION_CENTS / 100:.2f}/month × {CYCLE_COUNT} cycles. "
+        f"Culture=Tanda. The waitlist holds {len(LABELS)} compatible members. "
+        "FORM the circle with the full waitlist cohort (founding_user_ids includes "
+        "every waiting user). Do NOT leave slots empty.",
+        context={"user_id": uid},
+    )
+    for tc in result.tool_calls:
+        if tc["name"] == "form_new_circle":
+            ok(f"matchmaker formed '{tc['input']['name']}' with "
+               f"{len(tc['input']['founding_user_ids'])} founders")
+            return
+    warn("matchmaker did not form a circle — check its tool_calls")
+
+
+async def cmd_accept(args: argparse.Namespace) -> None:
+    """Simulate a member accepting their invite (charter + mandate + debit day)."""
+    from app.bunq import get_bunq_client
+    from datetime import datetime, timezone as _tz
+    from app.agents.tools import emit_event as _emit
+
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    if not group:
+        die("no group found — run `demo matchmake-all` first")
+
+    user = sb.table("users").select("id,bunq_label").eq(
+        "bunq_label", args.label
+    ).single().execute().data
+    uid = uuid.UUID(user["id"])
+
+    member = (
+        sb.table("members").select("status").eq("group_id", group["id"])
+        .eq("user_id", str(uid)).single().execute().data
+    )
+    if member["status"] != "invited":
+        warn(f"{args.label}: status={member['status']}, expected 'invited' — skipping")
+        return
+
+    # Mandate via sandbox autoflow stub.
+    iban: str | None = None
+    bunq_mandate_id: str | None = None
+    try:
+        client = get_bunq_client(args.label)
+        await client.ensure_session()
+        acct_id = await client.get_primary_account_id()
+        flow = await client.create_autoflow(
+            from_account_id=acct_id,
+            description=f"Kitty · {group['name']}",
+            monthly_cap_cents=int(CONTRIBUTION_CENTS * 1.1),
+            debit_day=args.debit_day,
+        )
+        bunq_mandate_id = flow.get("id")
+        for a in await client.list_monetary_accounts():
+            if a.get("id") == acct_id:
+                for alias in a.get("alias") or []:
+                    if alias.get("type") == "IBAN":
+                        iban = alias.get("value")
+                        break
+                break
+    except Exception as e:  # noqa: BLE001
+        warn(f"bunq autoflow stub failed for {args.label}: {e}")
+
+    mandate_id = str(uuid.uuid4())
+    sb.table("mandates").insert(
+        {
+            "id": mandate_id,
+            "user_id": str(uid),
+            "group_id": group["id"],
+            "bunq_mandate_id": bunq_mandate_id,
+            "iban": iban,
+            "debit_day": args.debit_day,
+            "monthly_cap_cents": int(CONTRIBUTION_CENTS * 1.1),
+            "terms_version": 1,
+        }
+    ).execute()
+    sb.table("members").update(
+        {
+            "status": "accepted",
+            "accepted_charter_at": datetime.now(_tz.utc).isoformat(),
+            "debit_day": args.debit_day,
+            "mandate_id": mandate_id,
+        }
+    ).eq("group_id", group["id"]).eq("user_id", str(uid)).execute()
+
+    await _emit(
+        uuid.UUID(group["id"]),
+        type="member.accepted",
+        payload={"user_id": str(uid), "mandate_id": mandate_id, "debit_day": args.debit_day},
+    )
+    ok(f"{args.label} accepted (mandate {mandate_id[:8]}…, debit day={args.debit_day})")
+
+    # If we just hit the cycle_count threshold, flip the group.
+    counts = sb.table("members").select("status").eq(
+        "group_id", group["id"]
+    ).execute().data or []
+    accepted = sum(1 for r in counts if r["status"] == "accepted")
+    if accepted >= int(group["cycle_count"]) and group["status"] == "awaiting_accepts":
+        sb.table("groups").update({"status": "chartered"}).eq(
+            "id", group["id"]
+        ).execute()
+        # Retire buffer (still-invited members).
+        sb.table("members").update({"status": "exited_clean"}).eq(
+            "group_id", group["id"]
+        ).eq("status", "invited").execute()
+        ok(f"group → chartered (buffer retired)")
+
+
+async def cmd_accept_all(args: argparse.Namespace) -> None:
+    """Accept for every still-invited member (handy for demos)."""
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    if not group:
+        die("no group found")
+    invited = (
+        sb.table("members")
+        .select("users!inner(bunq_label)")
+        .eq("group_id", group["id"])
+        .eq("status", "invited")
+        .execute()
+        .data
+        or []
+    )
+    for row in invited:
+        label = row["users"]["bunq_label"]
+        if not label:
+            continue
+        ns = argparse.Namespace(label=label, debit_day=args.debit_day)
+        await cmd_accept(ns)
+
+
+async def cmd_start(_: argparse.Namespace) -> None:
+    """Transition the group from chartered → active; seed the cycles table."""
+    from datetime import datetime, timedelta, timezone as _tz
+    from app.agents.tools import emit_event as _emit
+
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    if not group:
+        die("no group found")
+    if group["status"] != "chartered":
+        die(f"group is {group['status']}, expected 'chartered'")
+
+    cycle_count = int(group["cycle_count"])
+    members = sb.table("members").select(
+        "user_id,payout_cycle,accepted_charter_at"
+    ).eq("group_id", group["id"]).eq("status", "accepted").order(
+        "accepted_charter_at"
+    ).execute().data or []
+
+    taken = {m["payout_cycle"] for m in members if m.get("payout_cycle")}
+    next_slot = (i for i in range(1, cycle_count + 1) if i not in taken)
+    for m in members:
+        slot = m.get("payout_cycle") or next(next_slot)
+        sb.table("members").update(
+            {"payout_cycle": slot, "status": "active"}
+        ).eq("group_id", group["id"]).eq("user_id", m["user_id"]).execute()
+
+    # Seed cycles with tight windows so the demo can move through them.
+    now = datetime.now(_tz.utc)
+    for cm in range(1, cycle_count + 1):
+        start = now + timedelta(minutes=(cm - 1) * 2)
+        sb.table("cycles").insert(
+            {
+                "group_id": group["id"],
+                "cycle_month": cm,
+                "contribution_opens_at": start.isoformat(),
+                "bid_opens_at": (start + timedelta(seconds=30)).isoformat(),
+                "bid_closes_at": (start + timedelta(minutes=1)).isoformat(),
+                "payout_at": (start + timedelta(minutes=1, seconds=10)).isoformat(),
+                "status": "contribution_window" if cm == 1 else "scheduled",
+            }
+        ).execute()
+
+    sb.table("groups").update(
+        {"status": "active", "starts_at": now.date().isoformat()}
+    ).eq("id", group["id"]).execute()
+    await _emit(
+        uuid.UUID(group["id"]),
+        type="group.active",
+        payload={"cycles_created": cycle_count, "starts_at": now.date().isoformat()},
+    )
+    ok(f"group → active · {cycle_count} cycles seeded")
+
+
+async def cmd_bid(args: argparse.Namespace) -> None:
+    """Place a bid for a given cycle as a given label."""
+    from datetime import datetime, timezone as _tz
+
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    u = sb.table("users").select("id").eq("bunq_label", args.label).single().execute().data
+    cycle = (
+        sb.table("cycles").select("id,status").eq("group_id", group["id"])
+        .eq("cycle_month", args.cycle).single().execute().data
+    )
+    if cycle["status"] == "paid":
+        die(f"cycle {args.cycle} already paid")
+
+    existing = (
+        sb.table("bids").select("id").eq("cycle_id", cycle["id"])
+        .eq("user_id", u["id"]).maybe_single().execute()
+    )
+    if existing and existing.data:
+        sb.table("bids").update(
+            {"urgency": args.urgency, "reason": args.reason, "withdrawn_at": None,
+             "reason_score": None, "weight": None}
+        ).eq("id", existing.data["id"]).execute()
+    else:
+        sb.table("bids").insert(
+            {
+                "cycle_id": cycle["id"],
+                "user_id": u["id"],
+                "urgency": args.urgency,
+                "reason": args.reason,
+            }
+        ).execute()
+
+    if cycle["status"] == "contribution_window":
+        sb.table("cycles").update({"status": "bid_window"}).eq(
+            "id", cycle["id"]
+        ).execute()
+    ok(f"{args.label} bid cycle {args.cycle} urgency={args.urgency}")
+
+
+async def cmd_resolve(args: argparse.Namespace) -> None:
+    """Resolve a cycle: bidding agent (2+ bids) / sole bidder / fallback."""
+    from app.agents.bidding import get_bidding
+    from app.agents.tools import emit_event as _emit, post_agent_message
+    from app.ledger.tb_client import TransferCode as _TC
+    from app.ledger.tb_two_phase import TransferLeg, linked_batch
+    from datetime import datetime, timezone as _tz
+
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    cycle = (
+        sb.table("cycles").select("*").eq("group_id", group["id"])
+        .eq("cycle_month", args.cycle).single().execute().data
+    )
+    if cycle["status"] == "paid":
+        warn("already paid")
+        return
+
+    bids = (
+        sb.table("bids")
+        .select("id,user_id,urgency,reason,users!inner(display_name)")
+        .eq("cycle_id", cycle["id"]).is_("withdrawn_at", "null").execute().data or []
+    )
+    log(f"cycle {args.cycle}: {len(bids)} bid(s)")
+
+    winner_user_id: str
+    winner_source: str
+    rationale: str
+
+    if len(bids) == 0:
+        r = (
+            sb.table("members")
+            .select("user_id,payout_cycle,users!inner(display_name)")
+            .eq("group_id", group["id"]).eq("status", "active")
+            .order("payout_cycle").limit(1).execute().data
+        )
+        winner_user_id = r[0]["user_id"]
+        winner_source = "fallback"
+        rationale = (
+            f"No bids — scheduled slot {r[0]['payout_cycle']} wins (fallback)."
+        )
+    elif len(bids) == 1:
+        b = bids[0]
+        winner_user_id = b["user_id"]
+        winner_source = "bid"
+        rationale = (
+            f"Sole bid by {b['users']['display_name']} (urgency={b['urgency']})."
+        )
+        sb.table("bids").update({"reason_score": 100, "weight": 1.0}).eq(
+            "id", b["id"]
+        ).execute()
+    else:
+        # Multi-bid → Bidding agent.
+        log("invoking Bidding agent…")
+        result = await get_bidding().run(
+            f"Cycle {args.cycle} has {len(bids)} bids. cycle_id={cycle['id']} "
+            f"group_id={group['id']}. Follow list_bids → evaluate_bid (once per bid) → select_winner.",
+            context={"cycle_id": uuid.UUID(cycle["id"]), "group_id": uuid.UUID(group["id"])},
+        )
+        refreshed = (
+            sb.table("cycles").select("winner_user_id,winner_rationale")
+            .eq("id", cycle["id"]).single().execute().data
+        )
+        winner_user_id = refreshed["winner_user_id"]
+        winner_source = "bid"
+        rationale = refreshed.get("winner_rationale") or result.text
+        if not winner_user_id:
+            die("bidding agent did not select a winner")
+
+    # Execute TB payout.
+    winner_member = (
+        sb.table("members")
+        .select("tb_received_account_id,users!inner(display_name)")
+        .eq("group_id", group["id"]).eq("user_id", winner_user_id).single().execute().data
+    )
+    pool_cents = int(group["contribution_amount_cents"]) * int(group["cycle_count"])
+    # Payout = 2 linked transfers: money out of pool THROUGH gateway TO member.
+    # pool → gateway debits pool once (real money leaves the ledger).
+    # gateway → member_received tracks the accrual on the winner's statement.
+    # Modeling it as pool→gateway + pool→member would debit pool twice and
+    # trip the debits_must_not_exceed_credits invariant.
+    code = _TC.BID_WON if winner_source == "bid" else _TC.PAYOUT_FALLBACK
+    tb_ids = linked_batch(
+        [
+            TransferLeg(int(group["tb_pool_account_id"]), int(group["tb_gateway_account_id"]), pool_cents, code),
+            TransferLeg(int(group["tb_gateway_account_id"]), int(winner_member["tb_received_account_id"]), pool_cents, code),
+        ],
+        group_id=uuid.UUID(group["id"]),
+        cycle_month=args.cycle,
+    )
+
+    sb.table("cycles").update(
+        {
+            "status": "paid",
+            "winner_user_id": winner_user_id,
+            "winner_source": winner_source,
+            "winner_rationale": rationale,
+            "payout_at": datetime.now(_tz.utc).isoformat(),
+        }
+    ).eq("id", cycle["id"]).execute()
+    sb.table("members").update(
+        {"status": "received", "received_at": datetime.now(_tz.utc).isoformat()}
+    ).eq("group_id", group["id"]).eq("user_id", winner_user_id).execute()
+
+    nxt = (
+        sb.table("cycles").select("id").eq("group_id", group["id"])
+        .eq("cycle_month", args.cycle + 1).maybe_single().execute()
+    )
+    if nxt and nxt.data:
+        sb.table("cycles").update({"status": "contribution_window"}).eq(
+            "id", nxt.data["id"]
+        ).execute()
+    else:
+        sb.table("groups").update({"status": "completed"}).eq(
+            "id", group["id"]
+        ).execute()
+        await _emit(uuid.UUID(group["id"]), type="group.completed", payload={})
+
+    await _emit(
+        uuid.UUID(group["id"]),
+        type="bid.resolved" if winner_source == "bid" else "payout.ledger_only",
+        payload={
+            "cycle_month": args.cycle,
+            "winner_user_id": winner_user_id,
+            "winner_display_name": winner_member["users"]["display_name"],
+            "winner_source": winner_source,
+            "amount_cents": pool_cents,
+            "rationale": rationale,
+            "tb_transfer_ids": [str(x) for x in tb_ids],
+        },
+    )
+    await post_agent_message(
+        uuid.UUID(group["id"]),
+        agent_name="bidding",
+        text=rationale,
+        metadata={"cycle_month": args.cycle, "winner_source": winner_source},
+    )
+
+    ok(
+        f"cycle {args.cycle} → {winner_member['users']['display_name']} "
+        f"(source={winner_source}, €{pool_cents/100:,.2f})"
+    )
+    print(f"  {DIM}{rationale}{RST}")
+
+
+def _latest_group(sb: Any) -> dict | None:
+    r = (
+        sb.table("groups").select("*")
+        .order("created_at", desc=True).limit(1).execute()
+    )
+    return r.data[0] if r.data else None
+
+
+async def cmd_fund_cycle(args: argparse.Namespace) -> None:
+    """Post contributions for a cycle from every active member in one go.
+
+    Pure ledger-side operation — the real flow goes through bunq + webhook,
+    but for demoing bids we want the pool funded without waiting for external
+    signals. Fires one linked_batch of 2 transfers per member (pool + contrib
+    tracking) so TB's invariant is exercised exactly as on the real path.
+    """
+    from app.ledger.tb_client import (
+        AccountCode, TransferCode, account_id_for,
+    )
+    from app.ledger.tb_two_phase import TransferLeg, linked_batch
+    from app.agents.tools import emit_event as _emit
+
+    sb = get_supabase()
+    group = _find_demo_group(sb) or _latest_group(sb)
+    # Members contribute EVERY cycle, including those already paid out — that's
+    # how a ROSCA actually works. Include both 'active' and 'received'.
+    members = sb.table("members").select(
+        "user_id,tb_contrib_account_id,status"
+    ).eq("group_id", group["id"]).in_(
+        "status", ["active", "received"]
+    ).execute().data or []
+    amount = int(group["contribution_amount_cents"])
+    gateway = int(group["tb_gateway_account_id"])
+    pool = int(group["tb_pool_account_id"])
+
+    for m in members:
+        linked_batch(
+            [
+                TransferLeg(gateway, pool, amount, TransferCode.CONTRIBUTION),
+                TransferLeg(gateway, int(m["tb_contrib_account_id"]), amount, TransferCode.CONTRIBUTION),
+            ],
+            group_id=uuid.UUID(group["id"]),
+            cycle_month=args.cycle,
+        )
+        await _emit(
+            uuid.UUID(group["id"]),
+            type="contribution.posted",
+            payload={"user_id": m["user_id"], "amount_cents": amount, "cycle_month": args.cycle},
+        )
+    ok(f"cycle {args.cycle} funded: {len(members)} × €{amount/100:,.2f} = €{len(members)*amount/100:,.2f}")
 
 
 # -----------------------------------------------------------------------------
@@ -615,6 +1090,39 @@ def main() -> None:
     p = sub.add_parser("payout")
     p.add_argument("--cycle", type=int, default=None)
     p.set_defaults(func=cmd_payout)
+
+    # Circle Lifecycle v2 subcommands
+    sub.add_parser("matchmake-all",
+        help="Run Vetting + Matchmaker for every sandbox user → form a circle",
+    ).set_defaults(func=cmd_matchmake_all)
+
+    p = sub.add_parser("accept", help="One member accepts their invite")
+    p.add_argument("label", choices=LABELS)
+    p.add_argument("--debit-day", dest="debit_day", type=int, default=1)
+    p.set_defaults(func=cmd_accept)
+
+    p = sub.add_parser("accept-all", help="Every still-invited member accepts")
+    p.add_argument("--debit-day", dest="debit_day", type=int, default=1)
+    p.set_defaults(func=cmd_accept_all)
+
+    sub.add_parser("start",
+        help="chartered → active: seed cycles",
+    ).set_defaults(func=cmd_start)
+
+    p = sub.add_parser("bid", help="Place a bid for a cycle")
+    p.add_argument("label", choices=LABELS)
+    p.add_argument("--cycle", type=int, required=True)
+    p.add_argument("--urgency", choices=["low", "medium", "high", "critical"], default="medium")
+    p.add_argument("--reason", default="demo bid")
+    p.set_defaults(func=cmd_bid)
+
+    p = sub.add_parser("resolve", help="Close bid window + pay")
+    p.add_argument("--cycle", type=int, required=True)
+    p.set_defaults(func=cmd_resolve)
+
+    p = sub.add_parser("fund-cycle", help="Post every member's contribution for a cycle")
+    p.add_argument("--cycle", type=int, required=True)
+    p.set_defaults(func=cmd_fund_cycle)
 
     args = parser.parse_args()
     asyncio.run(args.func(args))

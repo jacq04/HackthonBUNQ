@@ -295,6 +295,47 @@ class BunqClient:
         )
         return _first_response(resp.json())
 
+    async def create_autoflow(
+        self,
+        *,
+        from_account_id: int,
+        description: str,
+        monthly_cap_cents: int,
+        debit_day: int,
+        currency: str = "EUR",
+    ) -> dict[str, Any]:
+        """SEPA-style auto-debit mandate.
+
+        bunq's sandbox does not expose a stable 'payment-autoflow' endpoint for
+        3rd-party orchestration. We emit a deterministic sandbox mandate id and
+        log a warning so the rest of the lifecycle can continue. In production,
+        swap this stub for an actual autoflow setup + periodic pulls.
+        """
+        await self.ensure_session()
+        sandbox_id = f"SBX-AUTOFLOW-{uuid.uuid4().hex[:16]}"
+        log.warning(
+            "bunq.autoflow.sandbox_stub",
+            label=self.label,
+            account_id=from_account_id,
+            debit_day=debit_day,
+            monthly_cap_cents=monthly_cap_cents,
+            sandbox_id=sandbox_id,
+        )
+        return {
+            "id": sandbox_id,
+            "monetary_account_id": from_account_id,
+            "description": description,
+            "monthly_cap": {"value": f"{monthly_cap_cents / 100:.2f}", "currency": currency},
+            "debit_day": debit_day,
+            "status": "ACTIVE",
+            "sandbox": True,
+        }
+
+    async def revoke_autoflow(self, bunq_mandate_id: str) -> dict[str, Any]:
+        """Mirror of create_autoflow — sandbox stub. No server round-trip."""
+        log.warning("bunq.autoflow.revoke_sandbox_stub", mandate=bunq_mandate_id)
+        return {"id": bunq_mandate_id, "status": "REVOKED", "sandbox": True}
+
     async def request_test_funds(
         self, *, to_account_id: int, amount_cents: int = 50000
     ) -> dict[str, Any]:

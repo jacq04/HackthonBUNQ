@@ -41,6 +41,11 @@ class TransferCode(enum.IntEnum):
     PENALTY = 1002
     EMERGENCY_BUYOUT = 1003
     MEDIATOR_CORRECTION = 1004
+    # Circle Lifecycle v2 — distinguish payout provenance at the ledger level
+    # so the audit tape shows WHY money moved, not just that it did.
+    BID_WON = 1010            # payout to the winning bidder of a cycle
+    PAYOUT_FALLBACK = 1011    # 0-bid fallback — Payout Optimizer's scheduled slot winner
+    MANDATE_FEE = 1020        # reserved (no-op in sandbox)
 
 
 # TigerBeetle account/transfer flag bits (from the TB client library).
