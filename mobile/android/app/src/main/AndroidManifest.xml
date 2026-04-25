@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- pod. voice tour: mic capture + outbound networking for the
+         Gemini Live WebSocket proxy. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="kitty"
         android:name="${applicationName}"

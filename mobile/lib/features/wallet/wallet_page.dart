@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/pod_wordmark.dart';
+import '../../core/widgets/talk_to_pod_button.dart';
 import '../../services/api.dart';
 import '../../services/supabase.dart';
 import 'account_card.dart';
@@ -99,7 +100,9 @@ class _WalletPageState extends State<WalletPage> {
     final firstName = name.split(' ').first;
 
     return Scaffold(
-      body: RefreshIndicator(
+      body: Stack(
+        children: [
+          RefreshIndicator(
         color: KittyColors.coral,
         onRefresh: _load,
         child: ListView(
@@ -228,8 +231,13 @@ class _WalletPageState extends State<WalletPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _CirclesCard(circles: _circles),
             ),
+            const SizedBox(height: 80), // breathing room for the floating mic
           ],
         ),
+      ),
+          // Floating "talk to pod." pill — opens the Gemini Live voice tour
+          const TalkToPodButton(bottomInset: 28),
+        ],
       ),
     );
   }
