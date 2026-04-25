@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kitty Architecture</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f4ee;
+        --surface: #fffdf8;
+        --text: #1f1b16;
+        --muted: #5b5247;
+        --border: #ddd2c4;
+        --accent: #c85c2e;
+        --accent-soft: #f6e1d6;
+        --code: #f1ebe3;
+        --shadow: 0 18px 50px rgba(62, 40, 24, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+          Palatino, Georgia, serif;
+        background:
+          radial-gradient(circle at top left, rgba(200, 92, 46, 0.09), transparent 28%),
+          linear-gradient(180deg, #fbf7f2 0%, var(--bg) 100%);
+        color: var(--text);
+        line-height: 1.6;
+      }
+
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        padding: 40px;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        line-height: 1.15;
+        letter-spacing: -0.03em;
+        margin: 0 0 16px;
+      }
+
+      h1 {
+        font-size: clamp(2.4rem, 5vw, 3.6rem);
+      }
+
+      h2 {
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        margin-top: 40px;
+      }
+
+      h3 {
+        font-size: 1.15rem;
+        margin-top: 28px;
+      }
+
+      p,
+      ul,
+      ol {
+        margin: 0 0 16px;
+      }
+
+      ul,
+      ol {
+        padding-left: 24px;
+      }
+
+      li + li {
+        margin-top: 6px;
+      }
+
+      code {
+        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+        background: var(--code);
+        padding: 0.15em 0.4em;
+        border-radius: 6px;
+        font-size: 0.95em;
+      }
+
+      .lede {
+        font-size: 1.08rem;
+        color: var(--muted);
+      }
+
+      .mermaid-wrap {
+        margin: 24px 0 32px;
+        padding: 20px;
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        background: linear-gradient(180deg, #fffaf3 0%, #fffdf9 100%);
+        overflow-x: auto;
+      }
+
+      .section-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--border), transparent);
+        margin: 32px 0 0;
+      }
+
+      @media (max-width: 700px) {
+        .page {
+          padding: 24px 14px 48px;
+        }
+
+        .card {
+          padding: 24px 18px;
+          border-radius: 18px;
+        }
+      }
+    </style>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "base",
+        themeVariables: {
+          primaryColor: "#f6e1d6",
+          primaryTextColor: "#1f1b16",
+          primaryBorderColor: "#c85c2e",
+          lineColor: "#8d745e",
+          secondaryColor: "#fff7ee",
+          tertiaryColor: "#f1ebe3",
+          background: "#fffdf8",
+          fontFamily: "Avenir Next, Segoe UI, sans-serif"
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <main class="page">
+      <article class="card">
+        <h1>Kitty Architecture</h1>
+        <p class="lede">
+          This repo is a multi-service ROSCA savings app built around four core runtime pieces:
+        </p>
+        <ul>
+          <li><code>mobile/</code>: Flutter client for members and admins</li>
+          <li><code>backend/</code>: FastAPI orchestration layer and agent runtime</li>
+          <li><code>supabase/</code>: app database, auth, and event/realtime foundation</li>
+          <li><code>TigerBeetle + bunq</code>: money-state ledger plus external banking rail</li>
+        </ul>
+
+        <h2>High-Level Diagram</h2>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+flowchart LR
+    U[Users]
+    M[Flutter Mobile App<br/>mobile/]
+    B[FastAPI Backend<br/>backend/app]
+    S[(Supabase<br/>Auth + Postgres + Realtime)]
+    T[(TigerBeetle<br/>double-entry ledger)]
+    Q[bunq API<br/>sandbox banking rail]
+    A[Agent Layer<br/>router + matchmaker + bidding + mediator + emergency]
+    W[bunq Webhooks<br/>/webhooks/bunq]
+    X[Admin / Demo Scripts<br/>backend/scripts + start.sh + Makefile]
+    L[Legacy Surfaces<br/>mobile-expo-legacy/ + web/]
+
+    U --> M
+    M -->|Supabase auth session| S
+    M -->|Bearer JWT + REST calls| B
+
+    B -->|service-role data access| S
+    B -->|ledger accounts and transfers| T
+    B -->|payment requests, account data, payouts| Q
+    Q -->|payment events| W
+    W --> B
+
+    B --> A
+    A -->|classify / decide / assist| B
+
+    X --> S
+    X --> T
+    X --> B
+    X --> Q
+
+    L -. optional / older clients .-> B
+    L -. optional / older clients .-> S
+          </div>
+        </div>
+
+        <h2>Runtime Boundaries</h2>
+
+        <h3>1. Client layer</h3>
+        <p>The primary client is the Flutter app in <code>mobile/</code>. It:</p>
+        <ul>
+          <li>authenticates users with Supabase</li>
+          <li>stores the active Supabase session locally</li>
+          <li>attaches the Supabase access token to backend API requests</li>
+          <li>exposes member flows such as wallet, circles, invites, bidding, and admin views</li>
+        </ul>
+
+        <h2>2. Backend orchestration</h2>
+        <p>
+          The FastAPI app in <code>backend/app/main.py</code> is the system hub. It exposes route groups for:
+        </p>
+        <ul>
+          <li>auth and profile</li>
+          <li>groups, members, and invites</li>
+          <li>matchmaker and lifecycle flows</li>
+          <li>contributions, payouts, disputes, emergencies, and chat</li>
+          <li>admin operations</li>
+          <li>bunq webhook ingestion</li>
+        </ul>
+        <p>
+          The backend is responsible for joining together app state, ledger state, bunq state, and agent decisions.
+        </p>
+
+        <h2>3. Data and auth</h2>
+        <p>Supabase is the app system of record for product data and authentication:</p>
+        <ul>
+          <li>mobile uses the anon key for auth/session management</li>
+          <li>backend uses the service-role key for trusted server-side access</li>
+          <li>SQL migrations in <code>supabase/migrations/</code> define the schema and policies</li>
+        </ul>
+        <p>
+          Typical tables referenced by the backend include groups, members, contributions, messages, and event/audit-style records.
+        </p>
+
+        <h2>4. Money architecture</h2>
+        <p>Money handling is intentionally split in two:</p>
+        <ul>
+          <li><code>bunq</code> moves real money and provides external payment/account primitives</li>
+          <li><code>TigerBeetle</code> enforces internal accounting invariants with double-entry transfers</li>
+        </ul>
+        <p>A key pattern in the repo is:</p>
+        <ol>
+          <li>backend creates a bunq payment request</li>
+          <li>backend creates matching pending TigerBeetle transfers</li>
+          <li>bunq webhook confirms payment arrival</li>
+          <li>backend posts the pending TigerBeetle transfers</li>
+          <li>Supabase records are updated to reflect the committed contribution</li>
+        </ol>
+        <p>
+          This gives the app a clear separation between bank-side events and internal ledger truth.
+        </p>
+
+        <h2>5. Agent layer</h2>
+        <p>
+          The <code>backend/app/agents/</code> package provides specialized LLM-driven roles.
+          They all sit on top of a shared <code>BaseAgent</code> runtime that:
+        </p>
+        <ul>
+          <li>runs Anthropic-backed tool loops</li>
+          <li>sanitizes user-authored input before model calls</li>
+          <li>logs tool usage for auditability</li>
+          <li>forces state changes to happen through explicit tools instead of free-text replies</li>
+        </ul>
+        <p>
+          These agents do not replace the backend. They sit behind the API and help with social and coordination decisions, while the backend still owns routing, persistence, ledger calls, and banking integrations.
+        </p>
+
+        <h3>Agent responsibilities</h3>
+        <ul>
+          <li><code>router</code>: classifies incoming group chat into intents such as contribution help, dispute, emergency, charter question, payout preference, or general chat so the backend can route to the right workflow.</li>
+          <li><code>matchmaker</code>: evaluates a user’s preferences and trust score against admin-opened circles and the waitlist, then decides whether to join an existing circle, fill a nearly-complete one, or add the user to the waitlist.</li>
+          <li><code>constitution</code>: interviews the founder, drafts the group charter in structured JSON, iterates on terms like contribution amount, penalties, payout policy, and early-exit rules, then finalizes the charter.</li>
+          <li><code>vetting</code>: reads a prospective member’s bunq transaction summary plus Kitty reputation history and writes a bounded <code>trust_score</code> with rationale to the user profile.</li>
+          <li><code>collector</code>: sends culturally-aware contribution reminders, escalates tone based on lateness, and opens a mediation path when collection has failed for too long.</li>
+          <li><code>bidding</code>: resolves multi-bid payout cycles by scoring urgency/reason quality, applying anti-gaming adjustments, and selecting a weighted-random winner that can be replayed for audit.</li>
+          <li><code>payout optimizer</code>: computes the overall payout order from member month preferences using constraint solving so each member gets a unique slot with minimal deviation from preferred timing.</li>
+          <li><code>mediator</code>: handles payment disputes by comparing TigerBeetle state, bunq transaction history, and uploaded receipt evidence, then issues a verdict and can trigger corrective ledger transfers.</li>
+          <li><code>emergency</code>: manages early exits and hardship cases by computing a fair buyout from ledger state, proposing terms to the group, and executing the unwind once consent is reached.</li>
+          <li><code>auditor</code>: issues signed reputation or “passport” events at cycle boundaries or group completion, updates trust scores, and records outcome-based score deltas for each member.</li>
+        </ul>
+
+        <h3>How agents interact with the rest of the system</h3>
+        <ul>
+          <li>Most agents read and write app state through Supabase tables such as <code>groups</code>, <code>members</code>, <code>messages</code>, <code>events</code>, <code>charters</code>, <code>disputes</code>, <code>emergencies</code>, <code>bids</code>, and <code>reputation_events</code>.</li>
+          <li>Money-affecting agents such as <code>mediator</code> and <code>emergency</code> can only change balances through explicit TigerBeetle transfer tools.</li>
+          <li>Agents that need banking context, especially <code>vetting</code> and <code>mediator</code>, read summary or transaction data through the backend’s bunq client rather than calling bunq directly from the mobile app.</li>
+          <li>Agent outputs often become durable application events: chat messages, audit log entries, waitlist decisions, trust scores, charter versions, dispute verdicts, or payout winners.</li>
+        </ul>
+
+        <h2>6. Dev and support surfaces</h2>
+        <p>Supporting repo pieces:</p>
+        <ul>
+          <li><code>start.sh</code>, <code>stop.sh</code>, and <code>docker-compose.yml</code> boot local backend and TigerBeetle</li>
+          <li><code>backend/scripts/</code> handles bootstrap and demo seeding</li>
+          <li><code>third_party/bunq_toolkit/</code> supports sandbox-user/session setup</li>
+          <li><code>mobile-expo-legacy/</code> and <code>web/</code> appear to be earlier or experimental client surfaces, not the main active architecture</li>
+        </ul>
+
+        <h2>Request Flow Example</h2>
+        <div class="mermaid-wrap">
+          <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Mobile as Flutter app
+    participant Supabase
+    participant Backend
+    participant Bunq
+    participant TB as TigerBeetle
+
+    User->>Mobile: Start contribution
+    Mobile->>Backend: POST /groups/{id}/contribute (JWT)
+    Backend->>Supabase: Read group/member context
+    Backend->>TB: Create pending linked transfers
+    Backend->>Bunq: Create payment request
+    Backend-->>Mobile: Return pay URL + pending ids
+    Bunq-->>Backend: PAYMENT.CREATED webhook
+    Backend->>TB: Post pending transfers
+    Backend->>Supabase: Mark contribution as posted
+    Backend-->>Mobile: State available via API / realtime refresh
+          </div>
+        </div>
+
+        <h2>Practical Summary</h2>
+        <p>If you need to reason about the repo quickly, the simplest mental model is:</p>
+        <ul>
+          <li>Supabase owns user identity and app data</li>
+          <li>FastAPI owns workflow orchestration</li>
+          <li>TigerBeetle owns accounting correctness</li>
+          <li>bunq owns external money movement</li>
+          <li>agents help with social decision-making around the savings circle</li>
+        </ul>
+      </article>
+    </main>
+  </body>
+</html>
