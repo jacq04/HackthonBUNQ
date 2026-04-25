@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/coral_button.dart';
+import '../../core/widgets/talk_to_pod_button.dart';
 import '../../services/api.dart';
 
 class HomePage extends StatefulWidget {
@@ -35,7 +36,8 @@ class _HomePageState extends State<HomePage> {
     final t = Theme.of(context).textTheme;
     final groups = _groups;
     return Scaffold(
-      body: SafeArea(
+      body: Stack(children: [
+        SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
           child: Column(
@@ -109,7 +111,9 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
         ),
-      ),
+        ),
+        const TalkToPodButton(bottomInset: 96),
+      ]),
     );
   }
 }

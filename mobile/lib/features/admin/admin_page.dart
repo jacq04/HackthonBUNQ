@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/pod_wordmark.dart';
+import '../../core/widgets/talk_to_pod_button.dart';
 import '../../services/api.dart';
 import '../../services/supabase.dart';
 import '../wallet/account_card.dart';
@@ -177,7 +178,8 @@ class _AdminPageState extends State<AdminPage>
     final t = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: KittyColors.creamDark,
-      body: SafeArea(
+      body: Stack(children: [
+        SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -259,7 +261,9 @@ class _AdminPageState extends State<AdminPage>
             ),
           ],
         ),
-      ),
+        ),
+        const TalkToPodButton(bottomInset: 28),
+      ]),
     );
   }
 }
