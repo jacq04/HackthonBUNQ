@@ -205,7 +205,7 @@
                 parts: [
                   {
                     text:
-                      "Greet the user briefly as pod.'s voice tour and invite them to ask how a circle works or to share their screen.",
+                      "Greet the user briefly as pod.'s voice tour and invite them to ask how a pod works or to share their screen.",
                   },
                 ],
               },
