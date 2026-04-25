@@ -230,7 +230,7 @@ class _MethodStage extends StatelessWidget {
           const SizedBox(height: 12),
           CoralButton(
             label: 'sign in with bunq',
-            color: KittyColors.bowl,
+            color: KittyColors.soft,
             foreground: KittyColors.cream,
             onPressed: onBunq,
             leading: const _BeeIcon(),
@@ -239,7 +239,7 @@ class _MethodStage extends StatelessWidget {
           CoralButton(
             label: 'email me a code',
             color: KittyColors.soft,
-            foreground: KittyColors.dusk,
+            foreground: KittyColors.cream,
             onPressed: onEmail,
           ).animate().fadeIn(duration: 420.ms, delay: 380.ms).slideY(begin: 0.4),
           const SizedBox(height: 36),
@@ -436,14 +436,14 @@ class _Avatar extends StatelessWidget {
       height: 44,
       alignment: Alignment.center,
       decoration: const BoxDecoration(
-        color: KittyColors.bowl,
+        color: KittyColors.coral,
         shape: BoxShape.circle,
       ),
       child: Text(
         name.isEmpty ? '?' : name.characters.first.toUpperCase(),
         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: KittyColors.cream,
-              fontWeight: FontWeight.w600,
+              color: KittyColors.ink,
+              fontWeight: FontWeight.w800,
             ),
       ),
     );

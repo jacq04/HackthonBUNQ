@@ -305,15 +305,16 @@ class _DebitDayPicker extends StatelessWidget {
                 height: 42,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: selected ? KittyColors.coral : KittyColors.cream,
+                  color: selected ? KittyColors.coral : KittyColors.soft,
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: selected ? KittyShadows.card : null,
                 ),
                 child: Text(
                   '$day',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color:
-                            selected ? KittyColors.cream : KittyColors.bowl,
+                        color: selected ? KittyColors.ink : KittyColors.cream,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w700,
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                 ),
@@ -347,7 +348,7 @@ class _Checkbox extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: checked
-          ? const Icon(Icons.check_rounded, color: KittyColors.cream, size: 18)
+          ? const Icon(Icons.check_rounded, color: KittyColors.ink, size: 18)
           : null,
     );
   }

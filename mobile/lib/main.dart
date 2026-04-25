@@ -88,8 +88,13 @@ class _KittyAppState extends State<KittyApp> {
     return MaterialApp.router(
       title: 'pod',
       debugShowCheckedModeBanner: false,
-      theme: kittyTheme(brightness: Brightness.light),
+      // Locked to dark — the bunq-kit aesthetic (Marvilo PDF page 4) is a
+      // black-canvas product, and the brand pops sharper without a light
+      // alternative. Light theme retained as a fallback for accessibility
+      // overrides at the OS level if anyone forces it.
+      theme: kittyTheme(brightness: Brightness.dark),
       darkTheme: kittyTheme(brightness: Brightness.dark),
+      themeMode: ThemeMode.dark,
       routerConfig: _router,
     );
   }

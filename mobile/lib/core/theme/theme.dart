@@ -40,33 +40,48 @@ ThemeData kittyTheme({required Brightness brightness}) {
     ),
     splashColor: KittyColors.coral.withValues(alpha: 0.08),
     highlightColor: KittyColors.coral.withValues(alpha: 0.04),
+    // Inputs sit on the black canvas — solid charcoal fill so the field reads
+    // without a border, with an orange focus ring picking up the brand.
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: muted.withValues(alpha: 0.6),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      hintStyle: textTheme.bodyLarge?.copyWith(color: ink.withValues(alpha: 0.38)),
+      fillColor: isDark
+          ? const Color(0xFF1F1F1F)
+          : Colors.white.withValues(alpha: 0.92),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+      hintStyle: textTheme.bodyLarge?.copyWith(color: ink.withValues(alpha: 0.4)),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.all(KittyRadius.l),
         borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.all(KittyRadius.l),
-        borderSide: BorderSide(color: KittyColors.coral.withValues(alpha: 0.35), width: 1.5),
+        borderSide: BorderSide(color: KittyColors.coral, width: 1.6),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: KittyColors.coral,
-        foregroundColor: surface,
+        // Bunq orange demands dark ink for legibility.
+        foregroundColor: KittyColors.ink,
         disabledBackgroundColor: muted,
         disabledForegroundColor: ink.withValues(alpha: 0.3),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(KittyRadius.l),
+          borderRadius: BorderRadius.all(KittyRadius.full),
         ),
         textStyle: textTheme.labelLarge,
         elevation: 0,
       ),
+    ),
+    // Dividers fade to match dark cards.
+    dividerTheme: DividerThemeData(
+      color: ink.withValues(alpha: 0.08),
+      thickness: 1,
+      space: 1,
+    ),
+    iconTheme: IconThemeData(color: ink.withValues(alpha: 0.85)),
+    progressIndicatorTheme: const ProgressIndicatorThemeData(
+      color: KittyColors.coral,
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(

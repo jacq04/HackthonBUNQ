@@ -80,7 +80,7 @@ class _AdminPodDetailPageState extends State<AdminPodDetailPage> {
     final t = Theme.of(context).textTheme;
     final d = _detail;
     return Scaffold(
-      backgroundColor: KittyColors.cream,
+      backgroundColor: KittyColors.creamDark,
       body: SafeArea(
         child: d == null
             ? const Center(
@@ -668,7 +668,7 @@ class _CycleRowState extends State<_CycleRow> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: KittyColors.cream,
+        backgroundColor: KittyColors.soft,
         title: const Text('close bid window?'),
         content: Text(
           status == 'bid_window'
@@ -718,6 +718,9 @@ class _CycleRowState extends State<_CycleRow> {
         tail = ' · ledger-only (bunq leg pending)';
         bg = KittyColors.agentEmergency;
       }
+      // Pick a foreground that contrasts each backdrop: orange CTA needs ink,
+      // deep-bowl/red banners need cream.
+      final fg = bg == KittyColors.coral ? KittyColors.ink : KittyColors.cream;
       messenger.showSnackBar(
         SnackBar(
           backgroundColor: bg,
@@ -725,7 +728,7 @@ class _CycleRowState extends State<_CycleRow> {
           content: Text(
             'cycle $month → $winner '
             '(€${amount.toStringAsFixed(0)} net · €${fee.toStringAsFixed(0)} fee · $src)$tail',
-            style: const TextStyle(color: KittyColors.cream),
+            style: TextStyle(color: fg, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -865,11 +868,11 @@ class _CycleRowState extends State<_CycleRow> {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: KittyColors.coral,
-                  foregroundColor: KittyColors.cream,
+                  foregroundColor: KittyColors.ink,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 14, vertical: 8),
                   textStyle: t.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
                 onPressed: _busy ? null : () => _resolve(month, status),
@@ -879,7 +882,7 @@ class _CycleRowState extends State<_CycleRow> {
                         height: 14,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: KittyColors.cream,
+                          color: KittyColors.ink,
                         ),
                       )
                     : const Icon(Icons.gavel_rounded, size: 16),
