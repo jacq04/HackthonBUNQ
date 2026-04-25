@@ -1873,6 +1873,22 @@ section {
   50%      { box-shadow: inset 0 0 24px 0 color-mix(in srgb, var(--moss) 30%, transparent); }
 }
 
+.vt--partial .vt__text {
+  opacity: 0.78;
+  position: relative;
+}
+.vt--partial .vt__text::after {
+  content: "▍";
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--coral);
+  animation: vtCaret 0.9s step-start infinite;
+}
+@keyframes vtCaret {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
 body.voice-locked { overflow: hidden; }
 
 @media (max-width: 640px) {

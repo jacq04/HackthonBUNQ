@@ -82,6 +82,10 @@
       this.state = "idle"; // idle | connecting | listening | speaking | error
       this.muted = false;
 
+      // running buffers for streamed transcription deltas; flushed at turn end
+      this.outBuf = "";
+      this.inBuf = "";
+
       // mic capture
       this.micCtx = null;
       this.micStream = null;
@@ -101,7 +105,13 @@
       this.shareCtx2d = null;
       this.shareVideo = null;
 
-      this.listeners = { state: [], transcript: [], level: [], share: [] };
+      this.listeners = {
+        state: [],
+        transcript: [],
+        partial: [],
+        level: [],
+        share: [],
+      };
     }
 
     on(event, fn) {
@@ -119,21 +129,22 @@
       if (this.state !== "idle" && this.state !== "error") return;
       this.setState("connecting");
       try {
-        // 1. mint an ephemeral token from our CF Pages function
+        // 1. fetch model + system prompt + proxy path from our CF function.
+        //    The API key never reaches the browser — the proxy applies it
+        //    server-side when opening the upstream Gemini Live WebSocket.
         const tokRes = await fetch("/api/voice-token", { method: "POST" });
         if (!tokRes.ok) {
           const txt = await tokRes.text();
           throw new Error(`token endpoint ${tokRes.status}: ${txt}`);
         }
         const session = await tokRes.json();
-        const token = session.token;
         const model = session.model;
-        if (!token) throw new Error("no token in session");
+        const proxyPath = session.proxy || "/api/voice-ws";
+        this._systemInstructions = session.instructions || "";
 
-        // 2. open the Live WebSocket
-        const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?access_token=${encodeURIComponent(
-          token
-        )}`;
+        // 2. connect to our same-origin WebSocket proxy
+        const wsScheme = location.protocol === "https:" ? "wss" : "ws";
+        const wsUrl = `${wsScheme}://${location.host}${proxyPath}`;
 
         this.ws = new WebSocket(wsUrl);
         this.ws.onopen = () => this.onWsOpen(model);
@@ -167,8 +178,18 @@
           model: `models/${model}`,
           generation_config: {
             response_modalities: ["AUDIO"],
+            speech_config: {
+              voice_config: {
+                prebuilt_voice_config: { voice_name: "Charon" },
+              },
+            },
           },
           tools: [{ function_declarations: TOOLS }],
+          system_instruction: {
+            parts: [{ text: this._systemInstructions || "" }],
+          },
+          input_audio_transcription: {},
+          output_audio_transcription: {},
         },
       });
 
@@ -237,28 +258,29 @@
               this.playPcmChunk(part.inlineData.data);
               this.setState("speaking");
             }
+            // text parts on modelTurn are not used for native-audio voice,
+            // but if a future model variant returns them, surface as a row.
             if (part.text) {
               this.emit("transcript", { role: "assistant", text: part.text });
             }
           }
         }
+        // streamed transcription deltas — accumulate, flush on turn complete
         if (sc.outputTranscription && sc.outputTranscription.text) {
-          this.emit("transcript", {
-            role: "assistant",
-            text: sc.outputTranscription.text,
-          });
+          this.outBuf += sc.outputTranscription.text;
+          this.emit("partial", { role: "assistant", text: this.outBuf });
         }
         if (sc.inputTranscription && sc.inputTranscription.text) {
-          this.emit("transcript", {
-            role: "user",
-            text: sc.inputTranscription.text,
-          });
+          this.inBuf += sc.inputTranscription.text;
+          this.emit("partial", { role: "user", text: this.inBuf });
         }
         if (sc.turnComplete) {
+          this.flushTranscriptBuffers();
           this.setState("listening");
         }
         if (sc.interrupted) {
           this.flushPlayback();
+          this.flushTranscriptBuffers();
           this.setState("listening");
         }
       }
@@ -269,6 +291,18 @@
           this.handleToolCall(fc);
         }
       }
+    }
+
+    flushTranscriptBuffers() {
+      if (this.inBuf.trim()) {
+        this.emit("transcript", { role: "user", text: this.inBuf.trim() });
+        this.inBuf = "";
+      }
+      if (this.outBuf.trim()) {
+        this.emit("transcript", { role: "assistant", text: this.outBuf.trim() });
+        this.outBuf = "";
+      }
+      this.emit("partial", null);
     }
 
     handleToolCall(fc) {
@@ -622,14 +656,48 @@
       modal.dataset.sharing = active ? "1" : "0";
     });
 
+    function roleLabel(r) {
+      return r === "assistant" ? "pod." : r === "user" ? "you" : "system";
+    }
+
+    // Track the live in-flight partial row per role so streamed deltas update
+    // a single bubble instead of stacking new rows. On turn-complete the
+    // committed `transcript` event removes the partial and appends a final row.
+    const partials = { user: null, assistant: null };
+
     pv.on("transcript", (t) => {
+      // commit: remove any open partial for this role; append a final row.
+      if (partials[t.role] && partials[t.role].parentNode) {
+        partials[t.role].remove();
+      }
+      partials[t.role] = null;
+
       const row = document.createElement("div");
       row.className = `vt vt--${t.role}`;
-      row.innerHTML = `<span class="vt__role">${
-        t.role === "assistant" ? "pod." : t.role === "user" ? "you" : "system"
-      }</span><span class="vt__text"></span>`;
+      row.innerHTML = `<span class="vt__role">${roleLabel(
+        t.role
+      )}</span><span class="vt__text"></span>`;
       row.querySelector(".vt__text").textContent = t.text;
       transcriptEl.appendChild(row);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    });
+
+    pv.on("partial", (p) => {
+      if (p === null) {
+        // turn ended — handled in 'transcript' commit
+        return;
+      }
+      let row = partials[p.role];
+      if (!row) {
+        row = document.createElement("div");
+        row.className = `vt vt--${p.role} vt--partial`;
+        row.innerHTML = `<span class="vt__role">${roleLabel(
+          p.role
+        )}</span><span class="vt__text"></span>`;
+        transcriptEl.appendChild(row);
+        partials[p.role] = row;
+      }
+      row.querySelector(".vt__text").textContent = p.text;
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
     });
 

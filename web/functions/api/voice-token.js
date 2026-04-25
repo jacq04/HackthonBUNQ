@@ -99,67 +99,17 @@ export async function onRequest(context) {
     );
   }
 
-  // Mint an ephemeral auth token. The Generative Language API exposes
-  // authTokens.create for short-lived tokens that can be used directly
-  // by browser clients to open the Live WebSocket.
-  // Token TTL: ~30 min. Session window after first use: ~1 min.
-  try {
-    const expireMs = Date.now() + 30 * 60 * 1000;
-    const newSessionMs = Date.now() + 60 * 1000;
-
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1alpha/auth_tokens?key=${encodeURIComponent(
-        apiKey
-      )}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uses: 1,
-          expire_time: new Date(expireMs).toISOString(),
-          new_session_expire_time: new Date(newSessionMs).toISOString(),
-          // Bind the token to a specific Live setup so the browser can't
-          // reuse it for arbitrary models or system prompts.
-          bidi_generate_content_setup: {
-            model: `models/${MODEL}`,
-            generation_config: {
-              response_modalities: ["AUDIO"],
-              speech_config: {
-                voice_config: {
-                  prebuilt_voice_config: { voice_name: "Charon" },
-                },
-              },
-            },
-            system_instruction: {
-              parts: [{ text: POD_INSTRUCTIONS }],
-            },
-          },
-        }),
-      }
-    );
-
-    if (!upstream.ok) {
-      const errText = await upstream.text();
-      return json(
-        { error: "Gemini auth-token creation failed", detail: errText },
-        upstream.status
-      );
-    }
-
-    const body = await upstream.json();
-    const token = body.name || body.token || body;
-
-    return json(
-      {
-        token,
-        model: MODEL,
-        expires_at: new Date(expireMs).toISOString(),
-      },
-      200
-    );
-  } catch (err) {
-    return json({ error: "Upstream request failed", detail: String(err) }, 502);
-  }
+  // The browser doesn't get the API key — it connects to /api/voice-ws,
+  // which proxies upstream with the key applied server-side. We just hand
+  // back the model name and the system prompt to use in the setup frame.
+  return json(
+    {
+      model: MODEL,
+      instructions: POD_INSTRUCTIONS,
+      proxy: "/api/voice-ws",
+    },
+    200
+  );
 }
 
 function json(body, status = 200) {
