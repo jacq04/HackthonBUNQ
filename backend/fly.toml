@@ -1,0 +1,48 @@
+# Fly.io deployment for the FastAPI backend.
+#
+# Deploy from the repo root with:
+#   fly deploy --config backend/fly.toml --dockerfile backend/Dockerfile
+#
+# Secrets to set BEFORE the first deploy (one time):
+#   fly secrets set --app pod-backend \
+#     ANTHROPIC_API_KEY=...   \
+#     BUNQ_API_KEY=...         \
+#     SUPABASE_URL=https://<proj>.supabase.co \
+#     SUPABASE_ANON_KEY=...                    \
+#     SUPABASE_SERVICE_ROLE_KEY=...            \
+#     SUPABASE_DB_URL=postgres://...           \
+#     TIGERBEETLE_ADDRESSES=pod-tb.internal:3000
+
+app = "pod-backend"
+primary_region = "ams"   # Amsterdam — close to bunq's EU rails
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PYTHONUNBUFFERED = "1"
+  PORT = "8000"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"   # scale-to-zero on idle to keep free tier happy
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout  = "5s"
+    grace_period = "10s"
+    method  = "GET"
+    path    = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[deploy]
+  release_command = "echo 'no migrations to run — Supabase Cloud handles them'"
