@@ -1,0 +1,44 @@
+name: kitty
+description: "Rotating savings, with a pot that can't lie."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # state + routing
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # backend
+  supabase_flutter: ^2.8.0
+  dio: ^5.7.0
+
+  # typography + motion polish
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+
+  # native hooks
+  local_auth: ^2.3.0
+  mobile_scanner: ^5.2.3
+  image_picker: ^1.1.2
+
+  # utilities
+  shared_preferences: ^2.3.3
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
