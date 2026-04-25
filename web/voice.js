@@ -1,68 +1,107 @@
 /* =========================================================
-   Kitty — realtime voice tour
-   Browser-side WebRTC client for OpenAI Realtime API.
-   - mints ephemeral token via /api/voice-token
-   - opens RTCPeerConnection directly to OpenAI
-   - mic in, model audio out
-   - data channel for transcripts + tool calls
+   pod. — realtime voice tour, powered by Gemini 2.5 Live
+   - mints ephemeral auth token via /api/voice-token
+   - opens a WebSocket directly to generativelanguage.googleapis.com
+   - mic in: 16 kHz mono PCM (linear-16) sent in real time
+   - audio out: 24 kHz mono PCM streamed via WebAudio
+   - optional screen share: getDisplayMedia → JPEG frames @ 1 fps
+   - tool calls: scrollToSection / openTheApp / endCall
    ========================================================= */
 
 (() => {
   const TOOLS = [
     {
-      type: "function",
       name: "scrollToSection",
       description:
-        "Scroll the page to one of Kitty's landing-page sections. Call this whenever the user wants to see a specific part of the site.",
+        "Scroll the page to one of pod.'s landing-page sections. Call this whenever the user wants to see a specific part of the site.",
       parameters: {
-        type: "object",
+        type: "OBJECT",
         properties: {
           section: {
-            type: "string",
-            enum: [
-              "problem",
-              "planes",
-              "how",
-              "agents",
-              "ledger",
-              "safety",
-              "cta",
-            ],
+            type: "STRING",
             description:
-              "The section anchor: problem (60% fail rate), planes (bunq/TigerBeetle/Claude), how (6-step lifecycle), agents (the crew), ledger (the live tape), safety (FaceID + atomic), cta (open the app).",
+              "Section anchor — one of: problem, planes, how, agents, ledger, safety, cta.",
           },
         },
         required: ["section"],
       },
     },
     {
-      type: "function",
       name: "openTheApp",
       description:
         "Move the user to the call-to-action section so they can open the app.",
-      parameters: { type: "object", properties: {} },
+      parameters: { type: "OBJECT", properties: {} },
     },
     {
-      type: "function",
       name: "endCall",
       description:
-        "End the voice call. Call this only when the user clearly wants to stop talking.",
-      parameters: { type: "object", properties: {} },
+        "End the voice call. Only call this when the user clearly wants to stop.",
+      parameters: { type: "OBJECT", properties: {} },
     },
   ];
 
-  class KittyVoice {
+  // ----------------- audio helpers -----------------
+
+  // Float32 [-1,1] → Int16 PCM little-endian
+  function float32ToPCM16(input) {
+    const out = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return out;
+  }
+
+  // ArrayBuffer → base64
+  function abToBase64(ab) {
+    const bytes = new Uint8Array(ab);
+    let binary = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      binary += String.fromCharCode.apply(
+        null,
+        bytes.subarray(i, i + chunk)
+      );
+    }
+    return btoa(binary);
+  }
+
+  // base64 → ArrayBuffer
+  function base64ToAb(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out.buffer;
+  }
+
+  // ----------------- the client -----------------
+
+  class PodVoice {
     constructor() {
-      this.pc = null;
-      this.dc = null;
-      this.audioEl = null;
-      this.localStream = null;
-      this.muted = false;
+      this.ws = null;
       this.state = "idle"; // idle | connecting | listening | speaking | error
-      this.listeners = { state: [], transcript: [], level: [] };
-      this.audioCtx = null;
-      this.analyser = null;
+      this.muted = false;
+
+      // mic capture
+      this.micCtx = null;
+      this.micStream = null;
+      this.micNode = null;
+      this.micSource = null;
+
+      // audio playback (24 kHz mono PCM)
+      this.outCtx = null;
+      this.outQueueTime = 0;
+      this.outAnalyser = null;
       this.levelRaf = 0;
+
+      // screen share
+      this.shareStream = null;
+      this.shareTimer = 0;
+      this.shareCanvas = null;
+      this.shareCtx2d = null;
+      this.shareVideo = null;
+
+      this.listeners = { state: [], transcript: [], level: [], share: [] };
     }
 
     on(event, fn) {
@@ -71,7 +110,6 @@
     emit(event, payload) {
       (this.listeners[event] || []).forEach((fn) => fn(payload));
     }
-
     setState(s) {
       this.state = s;
       this.emit("state", s);
@@ -80,75 +118,38 @@
     async start() {
       if (this.state !== "idle" && this.state !== "error") return;
       this.setState("connecting");
-
       try {
-        // 1. Mint ephemeral session token from our CF Pages function
+        // 1. mint an ephemeral token from our CF Pages function
         const tokRes = await fetch("/api/voice-token", { method: "POST" });
         if (!tokRes.ok) {
           const txt = await tokRes.text();
           throw new Error(`token endpoint ${tokRes.status}: ${txt}`);
         }
         const session = await tokRes.json();
-        const ephemeralKey = session?.client_secret?.value;
-        const model = session?.model || "gpt-realtime";
-        if (!ephemeralKey) throw new Error("no client_secret in session");
+        const token = session.token;
+        const model = session.model;
+        if (!token) throw new Error("no token in session");
 
-        // 2. Peer connection
-        this.pc = new RTCPeerConnection();
+        // 2. open the Live WebSocket
+        const wsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?access_token=${encodeURIComponent(
+          token
+        )}`;
 
-        // 3. Remote audio sink
-        this.audioEl = document.createElement("audio");
-        this.audioEl.autoplay = true;
-        this.audioEl.playsInline = true;
-        this.pc.ontrack = (e) => {
-          this.audioEl.srcObject = e.streams[0];
-          this.attachLevelMeter(e.streams[0]);
+        this.ws = new WebSocket(wsUrl);
+        this.ws.onopen = () => this.onWsOpen(model);
+        this.ws.onmessage = (e) => this.onWsMessage(e);
+        this.ws.onerror = (e) => {
+          console.warn("[PodVoice] ws error", e);
         };
-
-        // 4. Local mic
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        });
-        for (const track of this.localStream.getTracks()) {
-          this.pc.addTrack(track, this.localStream);
-        }
-
-        // 5. Data channel for events (must be created BEFORE the offer)
-        this.dc = this.pc.createDataChannel("oai-events");
-        this.dc.onopen = () => this.onChannelOpen();
-        this.dc.onmessage = (e) => this.onChannelEvent(e);
-
-        // 6. SDP exchange directly with OpenAI
-        const offer = await this.pc.createOffer();
-        await this.pc.setLocalDescription(offer);
-
-        const sdpRes = await fetch(
-          `https://api.openai.com/v1/realtime?model=${encodeURIComponent(
-            model
-          )}`,
-          {
-            method: "POST",
-            body: offer.sdp,
-            headers: {
-              Authorization: `Bearer ${ephemeralKey}`,
-              "Content-Type": "application/sdp",
-            },
+        this.ws.onclose = (e) => {
+          if (this.state !== "idle") {
+            console.warn("[PodVoice] ws closed", e.code, e.reason);
+            this.cleanup();
+            if (e.code !== 1000) this.setState("error");
           }
-        );
-        if (!sdpRes.ok) {
-          const errText = await sdpRes.text();
-          throw new Error(`sdp ${sdpRes.status}: ${errText}`);
-        }
-        const answer = { type: "answer", sdp: await sdpRes.text() };
-        await this.pc.setRemoteDescription(answer);
-
-        // wait for the data channel to open before declaring connected
+        };
       } catch (err) {
-        console.error("[KittyVoice] start failed", err);
+        console.error("[PodVoice] start failed", err);
         this.emit("transcript", {
           role: "system",
           text: `couldn't connect: ${err.message}`,
@@ -158,188 +159,391 @@
       }
     }
 
-    onChannelOpen() {
-      // Configure session: register our tools, ask for user transcripts
+    async onWsOpen(model) {
+      // setup message — most fields were pinned at token mint time, but the
+      // server still expects a setup frame. We pass tools here.
       this.send({
-        type: "session.update",
-        session: {
-          tools: TOOLS,
-          tool_choice: "auto",
+        setup: {
+          model: `models/${model}`,
+          generation_config: {
+            response_modalities: ["AUDIO"],
+          },
+          tools: [{ function_declarations: TOOLS }],
         },
       });
-      // Kick off the model so it greets first
-      this.send({
-        type: "response.create",
-        response: {
-          modalities: ["audio", "text"],
-          instructions:
-            "Greet the user briefly as Kitty's voice tour and invite them to ask how it works.",
-        },
-      });
-      this.setState("listening");
+
+      // start mic capture
+      try {
+        await this.startMic();
+        // ask the model to greet first
+        this.send({
+          client_content: {
+            turns: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text:
+                      "Greet the user briefly as pod.'s voice tour and invite them to ask how a circle works or to share their screen.",
+                  },
+                ],
+              },
+            ],
+            turn_complete: true,
+          },
+        });
+        this.setState("listening");
+      } catch (err) {
+        console.error("[PodVoice] mic failed", err);
+        this.emit("transcript", {
+          role: "system",
+          text: `mic blocked: ${err.message}`,
+        });
+        this.setState("error");
+      }
     }
 
-    onChannelEvent(e) {
-      let ev;
-      try {
-        ev = JSON.parse(e.data);
-      } catch {
+    onWsMessage(e) {
+      // Live API sends Blob frames in the browser
+      const handle = (text) => {
+        let msg;
+        try {
+          msg = JSON.parse(text);
+        } catch {
+          return;
+        }
+        this.handleServerMessage(msg);
+      };
+      if (typeof e.data === "string") {
+        handle(e.data);
+      } else if (e.data instanceof Blob) {
+        e.data.text().then(handle);
+      }
+    }
+
+    handleServerMessage(msg) {
+      // setupComplete — handshake done
+      if (msg.setupComplete) {
         return;
       }
-      switch (ev.type) {
-        case "session.created":
-        case "session.updated":
-          break;
 
-        case "input_audio_buffer.speech_started":
-          this.setState("listening");
-          break;
-        case "input_audio_buffer.speech_stopped":
-          // model will respond
-          break;
-
-        case "response.created":
-          this.setState("speaking");
-          break;
-        case "response.done":
-          this.setState("listening");
-          break;
-
-        case "response.audio_transcript.delta":
-          // streaming partial — could show live; we wait for done
-          break;
-        case "response.audio_transcript.done":
-          if (ev.transcript)
-            this.emit("transcript", {
-              role: "assistant",
-              text: ev.transcript,
-            });
-          break;
-
-        case "conversation.item.input_audio_transcription.completed":
-          if (ev.transcript)
-            this.emit("transcript", { role: "user", text: ev.transcript });
-          break;
-
-        case "response.function_call_arguments.done":
-          this.handleToolCall(ev);
-          break;
-
-        case "error":
-          console.warn("[KittyVoice] server error", ev);
+      // serverContent — turns from the model
+      const sc = msg.serverContent;
+      if (sc) {
+        if (sc.modelTurn && Array.isArray(sc.modelTurn.parts)) {
+          for (const part of sc.modelTurn.parts) {
+            if (part.inlineData && part.inlineData.data) {
+              // audio chunk — base64 PCM @ 24 kHz mono
+              this.playPcmChunk(part.inlineData.data);
+              this.setState("speaking");
+            }
+            if (part.text) {
+              this.emit("transcript", { role: "assistant", text: part.text });
+            }
+          }
+        }
+        if (sc.outputTranscription && sc.outputTranscription.text) {
           this.emit("transcript", {
-            role: "system",
-            text: `(${ev.error?.message || "server error"})`,
+            role: "assistant",
+            text: sc.outputTranscription.text,
           });
-          break;
+        }
+        if (sc.inputTranscription && sc.inputTranscription.text) {
+          this.emit("transcript", {
+            role: "user",
+            text: sc.inputTranscription.text,
+          });
+        }
+        if (sc.turnComplete) {
+          this.setState("listening");
+        }
+        if (sc.interrupted) {
+          this.flushPlayback();
+          this.setState("listening");
+        }
+      }
+
+      // toolCall — function calls from the model
+      if (msg.toolCall && Array.isArray(msg.toolCall.functionCalls)) {
+        for (const fc of msg.toolCall.functionCalls) {
+          this.handleToolCall(fc);
+        }
       }
     }
 
-    handleToolCall(ev) {
-      let args = {};
-      try {
-        args = JSON.parse(ev.arguments || "{}");
-      } catch {}
+    handleToolCall(fc) {
+      const args = fc.args || {};
       let result = "ok";
 
-      if (ev.name === "scrollToSection") {
+      if (fc.name === "scrollToSection") {
         const target = document.getElementById(args.section);
         if (target) {
           target.scrollIntoView({ behavior: "smooth", block: "start" });
           result = `scrolled the user to ${args.section}`;
         } else {
-          result = `section ${args.section} not found on the page`;
+          result = `section ${args.section} not found`;
         }
-      } else if (ev.name === "openTheApp") {
+      } else if (fc.name === "openTheApp") {
         const cta = document.getElementById("cta");
         if (cta) cta.scrollIntoView({ behavior: "smooth", block: "start" });
         result = "opened the call-to-action section";
-      } else if (ev.name === "endCall") {
+      } else if (fc.name === "endCall") {
         setTimeout(() => this.stop(), 800);
         result = "ending the call";
       } else {
-        result = `unknown tool ${ev.name}`;
+        result = `unknown tool ${fc.name}`;
       }
 
-      // send result back
       this.send({
-        type: "conversation.item.create",
-        item: {
-          type: "function_call_output",
-          call_id: ev.call_id,
-          output: JSON.stringify(result),
+        tool_response: {
+          function_responses: [
+            {
+              id: fc.id,
+              name: fc.name,
+              response: { result },
+            },
+          ],
         },
       });
-      this.send({ type: "response.create" });
     }
 
     send(obj) {
-      if (this.dc && this.dc.readyState === "open")
-        this.dc.send(JSON.stringify(obj));
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify(obj));
+      }
+    }
+
+    // ----------------- mic capture (16 kHz mono PCM) -----------------
+
+    async startMic() {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+
+      // AudioContext at 16 kHz lets the browser do native resampling.
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      this.micCtx = new Ctx({ sampleRate: 16000 });
+      if (this.micCtx.state === "suspended") await this.micCtx.resume();
+
+      this.micSource = this.micCtx.createMediaStreamSource(this.micStream);
+
+      // ScriptProcessor is deprecated but ubiquitous; works for short demos.
+      // 4096-sample buffer @ 16 kHz ≈ 256 ms — well within the 100 ms+ window
+      // Live expects.
+      const bufSize = 4096;
+      this.micNode = this.micCtx.createScriptProcessor(bufSize, 1, 1);
+      this.micNode.onaudioprocess = (e) => {
+        if (this.muted) return;
+        const input = e.inputBuffer.getChannelData(0);
+        const pcm = float32ToPCM16(input);
+        const b64 = abToBase64(pcm.buffer);
+        this.send({
+          realtime_input: {
+            media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: b64 }],
+          },
+        });
+      };
+      this.micSource.connect(this.micNode);
+      this.micNode.connect(this.micCtx.destination); // required to flow
+    }
+
+    // ----------------- model audio playback (24 kHz mono PCM) -----------------
+
+    ensureOutCtx() {
+      if (this.outCtx) return;
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      this.outCtx = new Ctx({ sampleRate: 24000 });
+      this.outQueueTime = 0;
+      this.outAnalyser = this.outCtx.createAnalyser();
+      this.outAnalyser.fftSize = 256;
+      this.outAnalyser.connect(this.outCtx.destination);
+
+      const buf = new Uint8Array(this.outAnalyser.frequencyBinCount);
+      const tick = () => {
+        if (!this.outAnalyser) return;
+        this.outAnalyser.getByteFrequencyData(buf);
+        let sum = 0;
+        for (let i = 0; i < buf.length; i++) sum += buf[i];
+        this.emit("level", Math.min(1, sum / buf.length / 80));
+        this.levelRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    }
+
+    playPcmChunk(b64) {
+      this.ensureOutCtx();
+      const ab = base64ToAb(b64);
+      const view = new DataView(ab);
+      const sampleCount = ab.byteLength / 2;
+      const audioBuf = this.outCtx.createBuffer(1, sampleCount, 24000);
+      const ch = audioBuf.getChannelData(0);
+      for (let i = 0; i < sampleCount; i++) {
+        const s = view.getInt16(i * 2, true);
+        ch[i] = s / 0x8000;
+      }
+      const src = this.outCtx.createBufferSource();
+      src.buffer = audioBuf;
+      src.connect(this.outAnalyser);
+
+      const now = this.outCtx.currentTime;
+      const startAt = Math.max(now, this.outQueueTime);
+      src.start(startAt);
+      this.outQueueTime = startAt + audioBuf.duration;
+    }
+
+    flushPlayback() {
+      if (this.outCtx) {
+        try {
+          this.outCtx.close();
+        } catch {}
+        this.outCtx = null;
+        this.outAnalyser = null;
+        cancelAnimationFrame(this.levelRaf);
+        this.levelRaf = 0;
+      }
+    }
+
+    // ----------------- screen share (JPEG @ 1 fps) -----------------
+
+    async startScreenShare(videoEl) {
+      if (this.shareStream) return true;
+      try {
+        this.shareStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 4 },
+          audio: false,
+        });
+      } catch (err) {
+        console.warn("[PodVoice] screen share denied", err);
+        this.emit("transcript", {
+          role: "system",
+          text: "screen share was cancelled",
+        });
+        return false;
+      }
+
+      // user can stop sharing from the browser chrome
+      const track = this.shareStream.getVideoTracks()[0];
+      track.addEventListener("ended", () => this.stopScreenShare());
+
+      this.shareVideo = videoEl;
+      this.shareVideo.srcObject = this.shareStream;
+      try {
+        await this.shareVideo.play();
+      } catch {}
+
+      this.shareCanvas = document.createElement("canvas");
+      this.shareCtx2d = this.shareCanvas.getContext("2d");
+
+      this.shareTimer = setInterval(() => this.captureFrame(), 1000);
+      this.emit("share", true);
+
+      // tell the model
+      this.send({
+        client_content: {
+          turns: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text:
+                    "I just started sharing my screen. From now on you'll receive a frame every second. Use what you see when answering.",
+                },
+              ],
+            },
+          ],
+          turn_complete: false,
+        },
+      });
+      return true;
+    }
+
+    captureFrame() {
+      if (!this.shareVideo || this.shareVideo.videoWidth === 0) return;
+      // downscale to ~640px wide to keep payload small
+      const targetW = 640;
+      const ratio = this.shareVideo.videoWidth / this.shareVideo.videoHeight;
+      const w = targetW;
+      const h = Math.round(targetW / ratio);
+      this.shareCanvas.width = w;
+      this.shareCanvas.height = h;
+      this.shareCtx2d.drawImage(this.shareVideo, 0, 0, w, h);
+      const dataUrl = this.shareCanvas.toDataURL("image/jpeg", 0.7);
+      const b64 = dataUrl.split(",")[1];
+      this.send({
+        realtime_input: {
+          media_chunks: [{ mime_type: "image/jpeg", data: b64 }],
+        },
+      });
+    }
+
+    stopScreenShare() {
+      if (this.shareTimer) {
+        clearInterval(this.shareTimer);
+        this.shareTimer = 0;
+      }
+      if (this.shareStream) {
+        this.shareStream.getTracks().forEach((t) => t.stop());
+        this.shareStream = null;
+      }
+      if (this.shareVideo) {
+        this.shareVideo.srcObject = null;
+      }
+      this.shareCanvas = null;
+      this.shareCtx2d = null;
+      this.emit("share", false);
     }
 
     toggleMute() {
       this.muted = !this.muted;
-      if (this.localStream) {
-        for (const t of this.localStream.getAudioTracks())
+      if (this.micStream) {
+        for (const t of this.micStream.getAudioTracks())
           t.enabled = !this.muted;
       }
       return this.muted;
     }
 
-    /* visualize remote audio level for the orb */
-    attachLevelMeter(stream) {
-      try {
-        if (!this.audioCtx)
-          this.audioCtx = new (window.AudioContext ||
-            window.webkitAudioContext)();
-        if (this.audioCtx.state === "suspended") this.audioCtx.resume();
-        const src = this.audioCtx.createMediaStreamSource(stream);
-        this.analyser = this.audioCtx.createAnalyser();
-        this.analyser.fftSize = 256;
-        src.connect(this.analyser);
-        const buf = new Uint8Array(this.analyser.frequencyBinCount);
-        const tick = () => {
-          if (!this.analyser) return;
-          this.analyser.getByteFrequencyData(buf);
-          let sum = 0;
-          for (let i = 0; i < buf.length; i++) sum += buf[i];
-          const lvl = Math.min(1, sum / buf.length / 80);
-          this.emit("level", lvl);
-          this.levelRaf = requestAnimationFrame(tick);
-        };
-        tick();
-      } catch (e) {
-        console.warn("[KittyVoice] level meter failed", e);
-      }
-    }
-
     stop() {
+      try {
+        this.send({ client_content: { turn_complete: true } });
+      } catch {}
+      try {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.close(1000);
+      } catch {}
       this.cleanup();
       this.setState("idle");
     }
 
     cleanup() {
+      this.stopScreenShare();
       if (this.levelRaf) cancelAnimationFrame(this.levelRaf);
       this.levelRaf = 0;
-      this.analyser = null;
       try {
-        if (this.localStream)
-          this.localStream.getTracks().forEach((t) => t.stop());
+        if (this.micNode) this.micNode.disconnect();
       } catch {}
       try {
-        if (this.dc) this.dc.close();
+        if (this.micSource) this.micSource.disconnect();
       } catch {}
       try {
-        if (this.pc) this.pc.close();
+        if (this.micCtx && this.micCtx.state !== "closed") this.micCtx.close();
       } catch {}
-      this.localStream = null;
-      this.dc = null;
-      this.pc = null;
-      if (this.audioEl) {
-        this.audioEl.srcObject = null;
-        this.audioEl = null;
-      }
+      try {
+        if (this.outCtx && this.outCtx.state !== "closed") this.outCtx.close();
+      } catch {}
+      try {
+        if (this.micStream) this.micStream.getTracks().forEach((t) => t.stop());
+      } catch {}
+      this.micNode = null;
+      this.micSource = null;
+      this.micCtx = null;
+      this.outCtx = null;
+      this.outAnalyser = null;
+      this.micStream = null;
+      this.ws = null;
     }
   }
 
@@ -356,40 +560,51 @@
     const closeBtn = $("#voiceClose");
     const muteBtn = $("#voiceMute");
     const hangBtn = $("#voiceHang");
+    const shareBtn = $("#voiceShare");
     const stateEl = $("#voiceState");
     const transcriptEl = $("#voiceTranscript");
     const orb = $("#voiceOrb");
+    const shareVideo = $("#voiceShareVideo");
 
     if (!btn || !modal) return;
 
-    const kv = new KittyVoice();
-    window.__kittyVoice = kv;
+    const pv = new PodVoice();
+    window.__podVoice = pv;
 
     function open() {
       modal.classList.add("is-open");
       document.body.classList.add("voice-locked");
       transcriptEl.innerHTML = "";
-      kv.start();
+      pv.start();
     }
     function close() {
       modal.classList.remove("is-open");
       document.body.classList.remove("voice-locked");
-      kv.stop();
+      pv.stop();
     }
 
     btn.addEventListener("click", open);
     closeBtn.addEventListener("click", close);
     hangBtn.addEventListener("click", close);
     muteBtn.addEventListener("click", () => {
-      const muted = kv.toggleMute();
+      const muted = pv.toggleMute();
       muteBtn.dataset.muted = muted ? "1" : "0";
       muteBtn.textContent = muted ? "unmute" : "mute";
     });
+
+    shareBtn.addEventListener("click", async () => {
+      if (shareBtn.dataset.sharing === "1") {
+        pv.stopScreenShare();
+      } else {
+        await pv.startScreenShare(shareVideo);
+      }
+    });
+
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal.classList.contains("is-open")) close();
     });
 
-    kv.on("state", (s) => {
+    pv.on("state", (s) => {
       const labels = {
         idle: "ready",
         connecting: "connecting…",
@@ -401,18 +616,24 @@
       modal.dataset.state = s;
     });
 
-    kv.on("transcript", (t) => {
+    pv.on("share", (active) => {
+      shareBtn.dataset.sharing = active ? "1" : "0";
+      shareBtn.textContent = active ? "stop sharing" : "share screen";
+      modal.dataset.sharing = active ? "1" : "0";
+    });
+
+    pv.on("transcript", (t) => {
       const row = document.createElement("div");
       row.className = `vt vt--${t.role}`;
       row.innerHTML = `<span class="vt__role">${
-        t.role === "assistant" ? "kitty" : t.role === "user" ? "you" : "system"
+        t.role === "assistant" ? "pod." : t.role === "user" ? "you" : "system"
       }</span><span class="vt__text"></span>`;
       row.querySelector(".vt__text").textContent = t.text;
       transcriptEl.appendChild(row);
       transcriptEl.scrollTop = transcriptEl.scrollHeight;
     });
 
-    kv.on("level", (lvl) => {
+    pv.on("level", (lvl) => {
       if (orb) orb.style.setProperty("--lvl", lvl.toFixed(3));
     });
   }

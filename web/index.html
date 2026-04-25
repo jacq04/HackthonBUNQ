@@ -802,8 +802,8 @@
     <div class="voice-modal__panel">
       <header class="voice-modal__head">
         <div class="voice-modal__title">
-          <span class="voice-eyebrow">live · webrtc · openai realtime</span>
-          <h3 id="voiceTitle">kitty's voice tour</h3>
+          <span class="voice-eyebrow">live · gemini 2.5 live · audio + screen</span>
+          <h3 id="voiceTitle">pod. voice tour</h3>
         </div>
         <button id="voiceClose" class="voice-icon-btn" aria-label="Close">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -826,7 +826,16 @@
         <div id="voiceTranscript" class="voice-transcript" aria-live="polite"></div>
       </div>
 
+      <div class="voice-share">
+        <video id="voiceShareVideo" class="voice-share__video" autoplay muted playsinline></video>
+        <span class="voice-share__label">model is watching · 1 fps</span>
+      </div>
+
       <footer class="voice-modal__foot">
+        <button id="voiceShare" class="voice-action voice-action--ghost" data-sharing="0" aria-label="Share screen with pod.">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" style="margin-right:6px;vertical-align:-2px"><rect x="3" y="4" width="18" height="13" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 21h6M12 17v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 11l3-3 3 3M12 8v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          share screen
+        </button>
         <button id="voiceMute" class="voice-action voice-action--ghost" data-muted="0">mute</button>
         <button id="voiceHang" class="voice-action voice-action--end">end call</button>
       </footer>

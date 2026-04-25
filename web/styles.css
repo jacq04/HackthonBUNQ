@@ -1794,6 +1794,62 @@ section {
   border-color: var(--coral-deep);
 }
 
+.voice-action--ghost[data-sharing="1"] {
+  background: var(--moss);
+  color: var(--cream);
+  border-color: var(--moss);
+}
+.voice-action--ghost[data-sharing="1"]:hover {
+  background: #14a868;
+  border-color: #14a868;
+}
+
+/* Screen-share preview — hidden until a track is active */
+.voice-share {
+  display: none;
+  position: relative;
+  margin: 0 24px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  background: #000;
+  aspect-ratio: 16 / 10;
+}
+.voice-modal[data-sharing="1"] .voice-share { display: block; }
+.voice-share__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #000;
+}
+.voice-share__label {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-family: var(--f-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--cream);
+  background: color-mix(in srgb, var(--moss) 90%, transparent);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+.voice-share::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px solid color-mix(in srgb, var(--moss) 60%, transparent);
+  border-radius: 10px;
+  pointer-events: none;
+  animation: shareGlow 2.4s ease-in-out infinite;
+}
+@keyframes shareGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 color-mix(in srgb, var(--moss) 0%, transparent); }
+  50%      { box-shadow: inset 0 0 24px 0 color-mix(in srgb, var(--moss) 30%, transparent); }
+}
+
 body.voice-locked { overflow: hidden; }
 
 @media (max-width: 640px) {
@@ -1804,4 +1860,6 @@ body.voice-locked { overflow: hidden; }
   .voice-orb { width: 110px; height: 110px; }
   .voice-orb__core { width: 50px; height: 50px; }
   .voice-transcript { max-height: none; }
+  .voice-modal__foot { flex-wrap: wrap; }
+  .voice-action { flex: 1 1 calc(50% - 5px); min-width: 0; }
 }
