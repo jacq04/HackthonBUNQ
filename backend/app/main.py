@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.bunq import get_bunq_client
+from app.bunq.bootstrap import materialize_context_files
 from app.config import settings
 from app.routes import (
     admin,
@@ -37,6 +38,14 @@ log = get_logger(__name__)
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     log.info("kitty.starting", env=settings.env, port=settings.backend_port)
+    # Materialize any BUNQ_CTX_<LABEL> env vars onto disk so the rest of the
+    # app — which reads ~/.kitty/bunq-contexts/<label>.json — finds them.
+    try:
+        n = materialize_context_files()
+        if n:
+            log.info("kitty.bunq.contexts_loaded", count=n)
+    except Exception as e:  # noqa: BLE001
+        log.warning("kitty.bunq.materialize_failed", error=str(e))
     # Warm bunq session lazily on first request — avoids blocking startup when
     # keys aren't set yet (common in dev). We still register the cleanup hook.
     try:
