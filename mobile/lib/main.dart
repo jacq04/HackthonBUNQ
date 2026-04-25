@@ -1,20 +1,78 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-void main() {
-  runApp(const MainApp());
+import 'core/theme/theme.dart';
+import 'features/auth/sign_in_page.dart';
+import 'features/group/group_detail_page.dart';
+import 'features/home/home_page.dart';
+import 'features/matchmaker/find_circle_page.dart';
+import 'services/supabase.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initSupabase();
+  runApp(const ProviderScope(child: KittyApp()));
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class KittyApp extends StatefulWidget {
+  const KittyApp({super.key});
+
+  @override
+  State<KittyApp> createState() => _KittyAppState();
+}
+
+class _KittyAppState extends State<KittyApp> {
+  late final GoRouter _router;
+
+  @override
+  void initState() {
+    super.initState();
+    _router = _buildRouter();
+    supabase.auth.onAuthStateChange.listen((_) {
+      if (mounted) _router.refresh();
+    });
+  }
+
+  GoRouter _buildRouter() {
+    return GoRouter(
+      initialLocation: '/',
+      refreshListenable: _AuthListenable(),
+      redirect: (context, state) {
+        final loggedIn = supabase.auth.currentSession != null;
+        final onAuth = state.matchedLocation == '/sign-in';
+        if (!loggedIn && !onAuth) return '/sign-in';
+        if (loggedIn && onAuth) return '/';
+        return null;
+      },
+      routes: [
+        GoRoute(path: '/sign-in', builder: (_, __) => const SignInPage()),
+        GoRoute(path: '/', builder: (_, __) => const HomePage()),
+        GoRoute(path: '/find-circle', builder: (_, __) => const FindCirclePage()),
+        GoRoute(
+          path: '/group/:id',
+          builder: (_, s) => GroupDetailPage(groupId: s.pathParameters['id']!),
+        ),
+      ],
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
+    return MaterialApp.router(
+      title: 'Kitty',
+      debugShowCheckedModeBanner: false,
+      theme: kittyTheme(brightness: Brightness.light),
+      darkTheme: kittyTheme(brightness: Brightness.dark),
+      routerConfig: _router,
     );
+  }
+}
+
+/// Fires `notifyListeners` whenever the Supabase auth state changes so
+/// go_router re-evaluates its `redirect`.
+class _AuthListenable extends ChangeNotifier {
+  _AuthListenable() {
+    supabase.auth.onAuthStateChange.listen((_) => notifyListeners());
   }
 }
