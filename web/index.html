@@ -19,7 +19,7 @@
   <!-- ======================= NAV ======================= -->
   <header class="nav">
     <a class="wordmark" href="#top" aria-label="pod.">
-      <img class="wordmark-img" src="./assets/logo_small.svg" alt="pod." />
+      <img class="wordmark-logo" src="./assets/logo_small.svg" alt="pod. — chit together, powered by bunq" width="120" height="80"/>
       <span class="wordmark-sub">· est. bunq hackathon 7.0</span>
     </a>
 
@@ -90,42 +90,63 @@
             <span class="pot-label__bot">⌁ live · 5 of 6 posted</span>
           </div>
 
-          <svg class="pot-svg" viewBox="0 0 400 460" role="img" aria-label="Animated pot filling with bunq-green liquid">
+          <svg class="pot-svg" viewBox="0 0 400 460" role="img" aria-label="Animated piggy bank filling with bunq-green savings">
             <defs>
+              <!-- liquid is clipped to the rounded body silhouette -->
               <clipPath id="bowl-clip">
-                <path d="M 80 174 L 80 188 C 80 384 122 420 200 420 C 278 420 320 384 320 188 L 320 174 Z"/>
+                <rect x="44" y="143" width="312" height="230" rx="104" ry="104"/>
               </clipPath>
               <linearGradient id="liq" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0" stop-color="#5CDFAA"/>
                 <stop offset=".55" stop-color="#1AC97F"/>
                 <stop offset="1" stop-color="#0B8056"/>
               </linearGradient>
-              <linearGradient id="bowl-out" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#F4F4F4"/>
-                <stop offset="1" stop-color="#8C8C8C"/>
+              <linearGradient id="piggy-body" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#F7B7B0"/>
+                <stop offset=".55" stop-color="#EC8E84"/>
+                <stop offset="1" stop-color="#C85A4F"/>
               </linearGradient>
-              <radialGradient id="bowl-shine" cx=".25" cy=".15" r=".8">
-                <stop offset="0" stop-color="#FFFFFF" stop-opacity=".55"/>
+              <linearGradient id="piggy-deep" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#EC8E84"/>
+                <stop offset="1" stop-color="#C85A4F"/>
+              </linearGradient>
+              <radialGradient id="body-shine" cx=".5" cy=".5" r=".5">
+                <stop offset="0" stop-color="#FFFFFF" stop-opacity=".5"/>
                 <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
               </radialGradient>
             </defs>
 
-            <!-- shadow -->
-            <ellipse cx="200" cy="432" rx="122" ry="7" fill="#000" opacity=".2"/>
+            <!-- ground shadow -->
+            <ellipse cx="200" cy="395" rx="132" ry="9" fill="#000" opacity=".4"/>
 
-            <!-- bowl body -->
-            <path class="bowl-body" d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172 Q 200 140 60 172 Z" fill="url(#bowl-out)" stroke="#FF7A1A" stroke-width="1.5"/>
-            <path d="M 60 172 C 60 382 122 432 200 432 C 278 432 340 382 340 172" fill="url(#bowl-shine)"/>
+            <!-- back legs (drawn first so the body covers their tops) -->
+            <rect x="100" y="343" width="40" height="64" rx="14" fill="url(#piggy-deep)"/>
+            <rect x="244" y="343" width="40" height="64" rx="14" fill="url(#piggy-deep)"/>
 
-            <!-- inside shadow (at the opening) -->
-            <path d="M 78 178 Q 200 162 322 178 L 322 198 Q 200 214 78 198 Z" fill="#0A0A0A" opacity=".55"/>
+            <!-- body -->
+            <rect x="44" y="143" width="312" height="230" rx="104" ry="104" fill="url(#piggy-body)"/>
 
-            <!-- liquid -->
+            <!-- snout (oval), drawn after body so it sits in front -->
+            <ellipse cx="344" cy="267" rx="36" ry="42" fill="url(#piggy-deep)"/>
+            <ellipse cx="332" cy="269" rx="3.6" ry="6.5" fill="#6B2A24"/>
+            <ellipse cx="356" cy="269" rx="3.6" ry="6.5" fill="#6B2A24"/>
+
+            <!-- ear -->
+            <path d="M 264 156 Q 296 83 328 156 Z" fill="url(#piggy-deep)"/>
+
+            <!-- eye + sparkle -->
+            <circle cx="296" cy="230" r="7" fill="#2B1A18"/>
+            <circle cx="298" cy="228" r="2.4" fill="#FFFFFF" opacity=".85"/>
+
+            <!-- tail curl (stroke) -->
+            <path d="M 46 230 Q 24 193 34 166 Q 54 138 40 124" fill="none" stroke="#C85A4F" stroke-width="7" stroke-linecap="round"/>
+
+            <!-- LIQUID — clipped to the body silhouette -->
             <g clip-path="url(#bowl-clip)">
               <g class="liquid-group">
                 <path class="liquid-path" d="M 0 0 L 400 0 L 400 520 L 0 520 Z" fill="url(#liq)"/>
                 <path class="liquid-front" d="M 0 10 L 400 10 L 400 520 L 0 520 Z" fill="#1AC97F" opacity=".7"/>
-                <ellipse class="liquid-hi" cx="160" cy="18" rx="78" ry="6" fill="#A8F0D4" opacity=".55"/>
+                <ellipse class="liquid-hi" cx="200" cy="18" rx="120" ry="6" fill="#A8F0D4" opacity=".55"/>
                 <circle class="bubble bubble--1" cx="160" cy="80" r="3.2" fill="#fff" opacity=".55"/>
                 <circle class="bubble bubble--2" cx="230" cy="140" r="2.2" fill="#fff" opacity=".45"/>
                 <circle class="bubble bubble--3" cx="260" cy="90" r="2.6" fill="#fff" opacity=".5"/>
@@ -133,17 +154,12 @@
               </g>
             </g>
 
-            <!-- rim -->
-            <path d="M 60 172 Q 200 140 340 172 Q 200 160 60 172 Z" fill="#F4F4F4"/>
-            <path d="M 60 172 Q 200 140 340 172" fill="none" stroke="#FFFFFF" stroke-width="1.5"/>
+            <!-- coin slot (drawn after liquid so it stays visible at any fill) -->
+            <rect x="140" y="161" width="80" height="10" rx="4" fill="#0E1A14"/>
+            <rect x="160" y="162" width="24" height="2.5" rx="1" fill="#FFFFFF" opacity=".18"/>
 
-            <!-- handles -->
-            <path d="M 58 220 C 26 218 22 266 58 282" fill="none" stroke="#8C8C8C" stroke-width="6" stroke-linecap="round"/>
-            <path d="M 342 220 C 374 218 378 266 342 282" fill="none" stroke="#8C8C8C" stroke-width="6" stroke-linecap="round"/>
-
-            <!-- bowl ornamentation -->
-            <path d="M 82 240 Q 200 250 318 240" fill="none" stroke="#FF7A1A" stroke-width="1" opacity=".4"/>
-            <path d="M 88 300 Q 200 308 312 300" fill="none" stroke="#FF7A1A" stroke-width="1" opacity=".25"/>
+            <!-- body specular highlight (on top, soft) -->
+            <ellipse cx="136" cy="211" rx="36" ry="16" fill="url(#body-shine)"/>
           </svg>
 
           <!-- floating deposit chips -->
@@ -725,9 +741,7 @@
     <footer class="foot">
       <div class="foot-top">
         <div class="foot-col foot-col--brand">
-          <div class="wordmark">
-            <img class="wordmark-img wordmark-img--foot" src="./assets/logo_small.svg" alt="pod." />
-          </div>
+          <img class="foot-logo" src="./assets/logo_large.svg" alt="pod. — chit together, powered by bunq" width="240" height="160"/>
           <p class="foot-tag">
             bunq = the bank.<br>
             TigerBeetle = the accountant.<br>

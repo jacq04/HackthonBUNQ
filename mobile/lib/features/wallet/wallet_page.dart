@@ -139,18 +139,10 @@ class _WalletPageState extends State<WalletPage> {
                 ),
               ),
             ),
+            // The pod. logo above already shows "CHIT TOGETHER" — skip the
+            // redundant tagline and just greet the user.
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-              child: Text(
-                'Chit together.',
-                style: t.labelSmall?.copyWith(
-                  color: KittyColors.dusk.withValues(alpha: 0.45),
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+              padding: const EdgeInsets.fromLTRB(24, 6, 24, 22),
               child: Text(
                 firstName.isEmpty ? 'welcome back' : 'hi, $firstName',
                 style: t.bodyLarge?.copyWith(

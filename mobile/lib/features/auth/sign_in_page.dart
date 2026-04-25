@@ -550,23 +550,15 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
+    // The official pod. logo already contains "CHIT TOGETHER" beneath the
+    // wordmark, so no caption is needed alongside it.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const PodWordmark(size: 96)
+        const PodWordmark(size: 120)
             .animate()
             .fadeIn(duration: 500.ms)
             .slideX(begin: -0.05, curve: Curves.easeOutCubic),
-        const SizedBox(height: 8),
-        Text(
-          'Chit together.',
-          style: t.bodyLarge?.copyWith(
-            color: KittyColors.dusk.withValues(alpha: 0.78),
-            height: 1.4,
-            letterSpacing: 0.2,
-          ),
-        ).animate().fadeIn(delay: 180.ms, duration: 500.ms).slideX(begin: -0.05),
       ],
     );
   }

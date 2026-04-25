@@ -23,6 +23,7 @@ dependencies:
   # typography + motion polish
   google_fonts: ^6.2.1
   flutter_animate: ^4.5.2
+  flutter_svg: ^2.0.10  # render the official pod. logo (SVG) on the splash + nav
 
   # native hooks
   local_auth: ^2.3.0
@@ -42,3 +43,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/logo_small.svg
+    - assets/logo_large.svg

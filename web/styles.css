@@ -138,21 +138,29 @@ u {
   color: var(--ink);
   text-decoration: none;
 }
-/* New asset wordmark — shipped from mobile/assets, matches the rebrand.
-   The SVG is 1536×1024 (3:2). At ~44px tall it reads cleanly at desktop
-   density. Footer can run a bit larger for breathing room. */
-.wordmark-img {
+/* Official pod. logo asset — 1536×1024 viewBox cropped tight to the rounded
+   rainbow card. Sized small in the nav, larger in the footer
+   (.foot-logo override). The soft shadow lifts the card off the dark canvas. */
+.wordmark-logo {
   height: 44px;
   width: auto;
   display: block;
   user-select: none;
-}
-.wordmark-img--foot {
-  height: 56px;
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 @media (max-width: 640px) {
-  .wordmark-img { height: 36px; }
-  .wordmark-img--foot { height: 48px; }
+  .wordmark-logo { height: 36px; }
+}
+/* Legacy .wordmark-type span retained for any inline-text uses; in the nav
+   the image replaces it. */
+.wordmark-type {
+  font-family: var(--f-body);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  color: var(--coral);
 }
 .wordmark-sub {
   font-family: var(--f-mono);
@@ -442,11 +450,13 @@ u {
           drop-shadow(0 8px 20px rgba(0,0,0,0.6));
 }
 
-/* the liquid group — position controlled via CSS var --pot-fill */
+/* the liquid group — position controlled via CSS var --pot-fill.
+   The hero illustration is now a piggy bank: liquid fills the rounded body
+   from y=373 (empty, trotters-up) to y=143 (full, ears-deep). */
 .liquid-group {
-  /* when fill=1, translateY = 174 (liquid top touches rim)
-     when fill=0, translateY = 420 (liquid at bottom of bowl) */
-  transform: translateY(calc(174px + (1 - var(--pot-fill)) * 246px));
+  /* when fill=1, translateY = 143 (liquid at top of body)
+     when fill=0, translateY = 373 (liquid at bottom of body) */
+  transform: translateY(calc(143px + (1 - var(--pot-fill)) * 230px));
   transition: transform 1.8s var(--ease-out);
 }
 
@@ -1393,6 +1403,15 @@ section {
 .foot-col a:hover { color: var(--coral); }
 
 .foot-col--brand .wordmark-type { color: var(--coral); }
+.foot-logo {
+  display: block;
+  width: 240px;
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
 .foot-tag {
   font-family: var(--f-display);
   font-size: 1rem;

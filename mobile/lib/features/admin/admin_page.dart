@@ -193,26 +193,13 @@ class _AdminPageState extends State<AdminPage>
                   else
                     const SizedBox(width: 8),
                   const SizedBox(width: 4),
-                  const PodWordmark(size: 32),
-                  const SizedBox(width: 10),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('control room',
-                          style: t.titleMedium?.copyWith(
-                            color: KittyColors.bowl,
-                            fontWeight: FontWeight.w700,
-                          )),
-                      Text(
-                        'Chit together.',
-                        style: t.labelSmall?.copyWith(
-                          color: KittyColors.dusk.withValues(alpha: 0.5),
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ],
-                  ),
+                  const PodWordmark(size: 36),
+                  const SizedBox(width: 12),
+                  Text('control room',
+                      style: t.titleMedium?.copyWith(
+                        color: KittyColors.bowl,
+                        fontWeight: FontWeight.w700,
+                      )),
                   const Spacer(),
                   IconButton(
                     tooltip: 'refresh',
