@@ -1,10 +1,5 @@
 # Pod — AI-Powered ROSCA Savings Platform
 
-**bunq Hackathon 7.0 submission**
-
-> **bunq** = the bank · **TigerBeetle** = the accountant · **Claude** = the organizer.
-> Agents propose, humans approve — with their face.
-
 ---
 
 ## What is Pod?
@@ -112,7 +107,7 @@ Several agents run continuously throughout a cycle's lifetime.
 
 Every message a member sends in the group chat passes through the **Router agent** first. The Router classifies it into one of seven intents — `contribute`, `dispute`, `emergency`, `charter_question`, `payout_preference`, `chat`, or `unknown` — and returns a routing decision with a confidence score. The backend uses this to decide which specialist agent, if any, to invoke next.
 
-#### Collector (Coby)
+#### Collector 
 
 The Collector runs on a cron schedule and checks for overdue contributions. For each member who is past their grace period, Coby composes a nudge and sends it via push notification and in-app message. The tone escalates automatically based on how many days overdue the member is:
 
@@ -123,7 +118,7 @@ The Collector runs on a cron schedule and checks for overdue contributions. For 
 
 Coby is culturally aware. If the member's language setting is non-English, the message is written in that language. If a cultural context is set (e.g. "susu" or "tanda"), the framing reflects that idiom. Messages are capped at two sentences plus one short actionable line.
 
-#### Mediator (Moti)
+#### Mediator
 
 When a member raises a dispute — typically "I paid but the pool says I didn't" — the **Mediator agent** investigates. It reads three sources of evidence in parallel:
 
@@ -367,9 +362,3 @@ SANDBOX_USERS.md    Sandbox identity table — drives bunq-bootstrap
 - **RLS** — Supabase Row-Level Security ensures users can only read groups they belong to. All cross-user queries originate from the FastAPI service role.
 
 ---
-
-## bunq Hackathon 7.0
-
-- API docs: https://doc.bunq.com/
-- DevPost submission: https://bunq-hackathon-7-0.devpost.com/
-- bunq hackathon toolkit: https://github.com/bunq/hackathon_toolkit
