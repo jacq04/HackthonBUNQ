@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>POD · AI Support</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Nunito:wght@900&display=swap');
+
+:root {
+  --bg:    #07091C;
+  --green: #00D166;
+  --blue:  #1688FF;
+  --purp:  #8B5CF6;
+  --w:     #FFFFFF;
+  --dim:   rgba(255,255,255,.42);
+  --faint: rgba(255,255,255,.06);
+  --edge:  rgba(255,255,255,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{min-height:100vh;display:grid;place-items:center;background:#030408;
+  font-family:'Inter',ui-sans-serif,system-ui,sans-serif;}
+.stage{width:min(100vw,1280px);aspect-ratio:16/9;position:relative;
+  overflow:hidden;border-radius:20px;background:var(--bg);
+  box-shadow:0 48px 140px rgba(0,0,0,.85);}
+
+/* orbs */
+.og,.ob{position:absolute;border-radius:50%;filter:blur(90px);pointer-events:none;z-index:0;}
+.og{width:600px;height:600px;background:rgba(0,209,102,.11);top:-150px;right:-120px;animation:of 9s ease-in-out infinite;}
+.ob{width:420px;height:420px;background:rgba(22,136,255,.07);bottom:-80px;left:-80px;animation:of 11s ease-in-out infinite reverse;}
+@keyframes of{0%,100%{transform:scale(1) translateY(0);}50%{transform:scale(1.08) translateY(28px);}}
+
+/* scene base */
+.sc{position:absolute;inset:0;display:grid;place-items:center;
+  opacity:0;pointer-events:none;
+  animation-fill-mode:forwards;animation-iteration-count:1;animation-duration:22s;z-index:1;}
+
+/* shared entrance */
+@keyframes up{from{opacity:0;transform:translateY(13px);}to{opacity:1;transform:translateY(0);}}
+@keyframes blast{from{opacity:0;transform:scale(.78);filter:blur(18px);}to{opacity:1;transform:scale(1);filter:blur(0);}}
+
+
+/* ══════════════════════════════════
+   S1 · HOOK  0–5s
+══════════════════════════════════ */
+.s1{animation-name:v1;text-align:center;padding:0 80px;}
+@keyframes v1{0%{opacity:0;}3%{opacity:1;}18%{opacity:1;}23%{opacity:0;}100%{opacity:0;}}
+.s1-big{font-size:clamp(52px,8vw,112px);font-weight:900;letter-spacing:-3px;
+  line-height:1;color:var(--w);
+  opacity:0;animation:blast .6s cubic-bezier(.22,1,.36,1) .2s forwards;}
+.s1-sm{margin-top:16px;font-size:clamp(18px,2.2vw,28px);font-weight:600;color:var(--green);
+  opacity:0;animation:up .5s ease-out .9s forwards;}
+
+
+/* ══════════════════════════════════
+   S2 · FEATURE REVEAL  5–17s
+══════════════════════════════════ */
+.s2{animation-name:v2;padding:0 68px;}
+@keyframes v2{0%,20%{opacity:0;}23%{opacity:1;}77%{opacity:1;}82%{opacity:0;}100%{opacity:0;}}
+.s2-inner{width:100%;max-width:1100px;}
+.s2-eye{font-size:11px;font-weight:800;letter-spacing:3px;text-transform:uppercase;
+  color:var(--green);margin-bottom:14px;
+  opacity:0;animation:up .45s ease-out 5.3s forwards;}
+.s2-title{font-size:clamp(26px,3vw,42px);font-weight:900;letter-spacing:-1.4px;
+  color:var(--w);line-height:1.1;margin-bottom:32px;
+  opacity:0;animation:up .55s ease-out 5.9s forwards;}
+.s2-title em{font-style:normal;
+  background:linear-gradient(135deg,#00D166 0%,#1688FF 55%,#8B5CF6 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+.feat-cards{display:flex;gap:18px;justify-content:flex-start;}
+.fc{flex:1;max-width:330px;background:var(--faint);border:1px solid var(--edge);
+  border-radius:22px;padding:24px 20px;text-align:left;position:relative;overflow:hidden;
+  opacity:0;animation:up .55s ease-out var(--d,0s) forwards;}
+.fc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;
+  border-radius:22px 0 0 22px;background:var(--c,var(--green));}
+.fc-icon{font-size:28px;margin-bottom:12px;}
+.fc-name{font-size:16px;font-weight:800;color:var(--w);margin-bottom:8px;}
+.fc-desc{font-size:14px;color:var(--dim);line-height:1.5;}
+.fc-desc strong{color:var(--w);}
+
+
+/* ══════════════════════════════════
+   S3 · TRANSITION  17–22s
+══════════════════════════════════ */
+.s3{animation-name:v3;text-align:center;}
+@keyframes v3{0%,77%{opacity:0;}82%{opacity:1;}100%{opacity:1;}}
+.s3-pre{font-size:clamp(15px,1.9vw,24px);font-weight:600;color:var(--dim);
+  letter-spacing:2px;text-transform:uppercase;
+  opacity:0;animation:up .5s ease-out 17.4s forwards;}
+.s3-arr{font-size:clamp(44px,7vw,90px);color:var(--green);margin-top:6px;
+  opacity:0;animation:up .5s ease-out 17.9s forwards;}
+
+/* progress */
+.bar{position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,.05);z-index:9;}
+.bfill{height:100%;width:0;background:linear-gradient(90deg,#00D166,#1688FF,#8B5CF6);
+  animation:bp 22s linear forwards 1;}
+@keyframes bp{to{width:100%;}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="og"></div>
+  <div class="ob"></div>
+
+
+  <!-- S1: HOOK  0–5s -->
+  <div class="sc s1">
+    <div>
+      <p class="s1-big">WOAH wait,<br>I have questions.</p>
+      <p class="s1-sm">We get it.</p>
+    </div>
+  </div>
+
+
+  <!-- S2: FEATURE REVEAL  5–17s -->
+  <div class="sc s2">
+    <div class="s2-inner">
+      <p class="s2-eye">Making it easier</p>
+      <h2 class="s2-title">To ask all your questions, we have a<br><em>fully multimodal query agent.</em></h2>
+      <div class="feat-cards">
+
+        <div class="fc" style="--c:var(--green);--d:6.8s">
+          <div class="fc-icon">🖥️</div>
+          <p class="fc-name">Share your screen</p>
+          <p class="fc-desc">Show the agent <strong>exactly what you see</strong> — it understands your situation in real time and walks you through it step by step.</p>
+        </div>
+
+        <div class="fc" style="--c:var(--blue);--d:7.3s">
+          <div class="fc-icon">💬</div>
+          <p class="fc-name">Ask anything, anytime</p>
+          <p class="fc-desc">Type or speak your question. Get <strong>clear, instant answers</strong> — no waiting, no hold music, no bots that don't understand you.</p>
+        </div>
+
+        <div class="fc" style="--c:var(--purp);--d:7.8s">
+          <div class="fc-icon">🌍</div>
+          <p class="fc-name">50+ languages</p>
+          <p class="fc-desc">Your circle spans Europe. Our agent does too — <strong>fully supported in over 50 languages</strong>, so everyone feels at home.</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- S3: TRANSITION  17–22s -->
+  <div class="sc s3">
+    <div>
+      <p class="s3-pre">Here's how it looks</p>
+      <p class="s3-arr">→</p>
+    </div>
+  </div>
+
+  <div class="bar"><div class="bfill"></div></div>
+</div>
+</body>
+</html>
